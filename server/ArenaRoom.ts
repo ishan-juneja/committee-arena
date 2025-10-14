@@ -111,7 +111,7 @@ export class ArenaRoom extends Room<ArenaState> {
     const player = new PlayerState();
     player.id = client.sessionId;
     player.name = options.name || "Guest";
-    player.committee = options.committee || "Coffee Chats";
+    player.committee = options.committee || "Leadership Events Directors";
     
     // Spawn player at random position
     player.x = Math.random() * (SPAWN_X_MAX - SPAWN_X_MIN) + SPAWN_X_MIN;
@@ -121,7 +121,8 @@ export class ArenaRoom extends Room<ArenaState> {
     // Add player to game state
     this.state.players.set(client.sessionId, player);
     
-    console.log(`✅ ${player.name} joined as ${player.committee}`);
+    console.log(`✅ ${player.name} joined as ${player.committee} at position (${player.x.toFixed(1)}, ${player.y.toFixed(1)})`);
+    console.log(`📊 Total players in room: ${this.state.players.size}`);
   }
 
   /**

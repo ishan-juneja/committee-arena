@@ -270,6 +270,8 @@ export default class GameScene extends Phaser.Scene {
         color = committee.color;
       }
       
+      console.log(`🔍 Creating sprite for ${player.name} at (${player.x}, ${player.y}) with color ${color.toString(16)}`);
+      
       // Create player sprite
       const playerSprite = new PlayerSprite(
         this, 
@@ -278,22 +280,34 @@ export default class GameScene extends Phaser.Scene {
         color
       );
       
-      // Set initial position (CRITICAL - this was missing!)
+      console.log(`🔍 Sprite created, now setting position...`);
+      
+      // Set initial position - CRITICAL!
       playerSprite.x = player.x;
       playerSprite.y = player.y;
       playerSprite.targetX = player.x;
       playerSprite.targetY = player.y;
+      playerSprite.setPosition(player.x, player.y); // Use Phaser's setPosition method
       playerSprite.updatePosition(player.x, player.y);
       playerSprite.updateHP(player.hp);
       
+      console.log(`🔍 Position set: Container at (${playerSprite.x}, ${playerSprite.y}), visible: ${playerSprite.visible}, depth: ${playerSprite.depth}`);
+      
+      // Make absolutely sure it's visible
+      playerSprite.setVisible(true);
+      playerSprite.setActive(true);
+      playerSprite.setDepth(10); // Above background
+      
       // Highlight own player with yellow glow
       if (sessionId === this.mySessionId) {
-        playerSprite.body.setStrokeStyle(3, 0xffff00, 1);
+        playerSprite.body.setStrokeStyle(4, 0xffff00, 1);
+        console.log(`⭐ This is YOUR player!`);
       }
       
       this.players[sessionId] = playerSprite;
       
-      console.log(`✅ Player sprite created at (${playerSprite.x}, ${playerSprite.y})`);
+      console.log(`✅ Player sprite FULLY CREATED at (${playerSprite.x}, ${playerSprite.y})`);
+      console.log(`📊 Total players in scene: ${Object.keys(this.players).length}`);
       
       // Listen for changes to this specific player
       player.onChange = () => {

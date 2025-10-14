@@ -19,28 +19,11 @@ const randomNameBtn = document.getElementById('random-name-btn');
 const controlsHint = document.getElementById('controls-hint');
 const colorOptions = document.querySelectorAll('.color-option');
 
-// Random name generator
-const randomNames = [
-  "Ethan", "Hailey", "Sarah", "Manuela", "Elizabeth", "Yangyang",
-  "Katie", "Mei", "Arielle", "Alex", "Jordan", "Taylor", "Morgan",
-  "Casey", "Riley", "Avery", "Quinn", "Blake", "Charlie", "Drew"
-];
-
-function generateRandomName() {
-  return randomNames[Math.floor(Math.random() * randomNames.length)];
-}
-
-// Auto-generate a random name on load
-playerNameInput.value = generateRandomName();
+// Auto-focus name input (no random name)
 playerNameInput.focus();
-playerNameInput.select();
 
-// Random name button
-randomNameBtn.addEventListener('click', () => {
-  playerNameInput.value = generateRandomName();
-  playerNameInput.focus();
-  playerNameInput.select();
-});
+// Hide random name button since user doesn't want it
+randomNameBtn.style.display = 'none';
 
 // Color selection
 colorOptions[0].classList.add('selected'); // Select first color by default
