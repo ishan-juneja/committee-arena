@@ -12,11 +12,20 @@ import path from "path";
 const app = express();
 const PORT = process.env.PORT || 2567;
 
-// Serve static files from client directory
-// When compiled to dist/server/index.js, we need to go up two levels to reach client/
-app.use(express.static(path.join(__dirname, "../../client")));
+// Serve static files from client directory (works in dev and prod)
+const staticDir = path.join(process.cwd(), "client");
+console.log(`📁 Serving static files from: ${staticDir}`);
 
-// Create HTTP server
+app.use(express.static(staticDir));
+
+// Root route -> serve index.html explicitly
+app.get("/", (req, res) => {
+  const indexPath = path.join(staticDir, "index.html");
+  console.log(`📄 Serving index.html from: ${indexPath}`);
+  res.sendFile(indexPath);
+});
+
+// Create HTTP server (after defining Express routes)
 const httpServer = createServer(app);
 
 // Create Colyseus game server

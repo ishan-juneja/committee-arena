@@ -133,17 +133,20 @@ export default class GameScene extends Phaser.Scene {
       this.mySessionId = this.room.sessionId;
       
       console.log(`🔗 Connected! Session ID: ${this.mySessionId}`);
-      
-      // Set up server state listeners IMMEDIATELY after joining
-      // This ensures we catch all player additions including existing players
+
+      // Register listeners for future state changes (player joins/leaves)
       this.setupStateListeners();
-      
-      // IMPORTANT: Create sprites for any players already in the room
-      // This handles reconnection cases where onAdd won't fire for existing players
-      console.log(`📊 Creating sprites for ${this.room.state.players.size} existing players`);
-      this.room.state.players.forEach((player, sessionId) => {
-        console.log(`🔄 Creating sprite for existing player: ${player.name}`);
-        this.createPlayerSprite(player, sessionId);
+
+      // Wait for the first full state before creating sprites.
+      // Ensures we have the authoritative positions from the server.
+      console.log("⏳ Waiting for first full state...");
+      this.room.onStateChange.once((state) => {
+        console.log("✅ First state received! Building initial sprites...");
+        state.players.forEach((player, sessionId) => {
+          if (!this.players[sessionId]) {
+            this.createPlayerSprite(player, sessionId);
+          }
+        });
       });
       
       // Show keyboard controls hint
