@@ -25,6 +25,9 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
     this.targetX = 0;
     this.targetY = 0;
     this.lerpSpeed = 0.3; // Interpolation speed (0-1, higher = faster)
+    
+    // Track timers for cleanup
+    this.activeTimers = [];
 
     // Create the player body (circle) - 12px radius = 25% of 50px grid box
     this.body = scene.add.circle(0, 0, 12, color);
@@ -97,7 +100,9 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
    */
   fadeOutOnDeath() {
     // Wait 7 seconds for emoji to display, then fade out
-    this.scene.time.delayedCall(7000, () => {
+    const timer = this.scene.time.delayedCall(7000, () => {
+      if (!this.scene) return; // Scene destroyed
+      
       this.scene.tweens.add({
         targets: this,
         alpha: 0,
@@ -110,6 +115,9 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
         }
       });
     });
+    
+    // Track timer for cleanup
+    this.activeTimers.push(timer);
   }
 
   /**
@@ -118,11 +126,33 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
    */
   flash() {
     this.body.setFillStyle(0xff0000);
-    setTimeout(() => {
-      if (this.body) {
+    const timerId = setTimeout(() => {
+      if (this.body && this.scene) {
         this.body.setFillStyle(this.baseColor);
       }
     }, 150);
+    
+    // Track timeout for cleanup (store as object so we can clear it)
+    this.activeTimers.push({ timerId });
+  }
+  
+  /**
+   * Override destroy to clean up timers
+   */
+  destroy(fromScene) {
+    // Clean up all active timers
+    this.activeTimers.forEach(timer => {
+      if (timer.timerId) {
+        clearTimeout(timer.timerId);
+      } else if (timer.remove) {
+        // Phaser timer
+        timer.remove();
+      }
+    });
+    this.activeTimers = [];
+    
+    // Call parent destroy
+    super.destroy(fromScene);
   }
 
   /**

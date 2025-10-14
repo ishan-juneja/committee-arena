@@ -19,14 +19,25 @@ let autoJoin = false;
 if (savedSession) {
   try {
     const sessionData = JSON.parse(savedSession);
-    playerName = sessionData.name;
-    playerColor = sessionData.color;
-    autoJoin = true;
+    const now = Date.now();
+    const sessionAge = now - sessionData.timestamp;
+    const MAX_SESSION_AGE = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     
-    if (reconnectToken) {
-      console.log('🔄 Found saved session + reconnect token, will restore your state...');
+    // Check if session is still valid (less than 24 hours old)
+    if (sessionAge < MAX_SESSION_AGE) {
+      playerName = sessionData.name;
+      playerColor = sessionData.color;
+      autoJoin = true;
+      
+      if (reconnectToken) {
+        console.log('🔄 Found saved session + reconnect token, will restore your state...');
+      } else {
+        console.log('🔄 Found saved session, will auto-reconnect...');
+      }
     } else {
-      console.log('🔄 Found saved session, will auto-reconnect...');
+      console.log('⏰ Session expired (older than 24 hours), please log in again');
+      localStorage.removeItem('arenaSession');
+      localStorage.removeItem('arenaReconnectToken');
     }
   } catch (e) {
     console.log('⚠️ Could not restore session');
@@ -71,8 +82,26 @@ if (autoJoin && playerName) {
   // Join button
   joinButton.addEventListener('click', () => {
     playerName = playerNameInput.value.trim();
+    
+    // Validate name
     if (playerName.length === 0) {
       alert("Please enter your name!");
+      return;
+    }
+    
+    if (playerName.length > 20) {
+      alert("Name too long! Maximum 20 characters.");
+      return;
+    }
+    
+    if (playerName.length < 2) {
+      alert("Name too short! Minimum 2 characters.");
+      return;
+    }
+    
+    // Check for special characters (allow only letters, numbers, spaces, and basic punctuation)
+    if (!/^[a-zA-Z0-9 \-_]+$/.test(playerName)) {
+      alert("Name contains invalid characters! Use only letters, numbers, spaces, hyphens, and underscores.");
       return;
     }
     

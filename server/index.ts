@@ -23,9 +23,10 @@ const gameServer = new Server({
   server: httpServer,
 });
 
-// Register the ArenaRoom
+// Register the ArenaRoom with a max capacity of 12 players
 // Clients will connect to this room using "arena" as the room name
-gameServer.define("arena", ArenaRoom);
+const roomDefinition = gameServer.define("arena", ArenaRoom);
+// Note: maxClients is set within ArenaRoom.onCreate() for better control
 
 // Start listening
 httpServer.listen(PORT, () => {

@@ -25,6 +25,10 @@ class ArenaRoom extends colyseus_1.Room {
         super(...arguments);
         // Track last attack time for each player (prevents spam)
         this.lastAttackTime = new Map();
+        // Track if winner has been announced to prevent multiple broadcasts
+        this.winnerAnnounced = false;
+        // Track active timers for cleanup
+        this.activeTimers = new Map();
     }
     /**
      * onCreate
@@ -33,6 +37,8 @@ class ArenaRoom extends colyseus_1.Room {
      */
     onCreate() {
         this.setState(new ArenaState_1.ArenaState());
+        // Set maximum number of clients
+        this.maxClients = 12;
         // Handle player movement messages
         // Clients send { dx, dy } to move their character
         this.onMessage("move", (client, data) => {
@@ -41,6 +47,9 @@ class ArenaRoom extends colyseus_1.Room {
                 console.log(`⚠️ Move message from unknown player: ${client.sessionId}`);
                 return;
             }
+            // Prevent dead players from moving
+            if (player.hp <= 0)
+                return;
             // Only process if there's actual movement
             if (data.dx === 0 && data.dy === 0)
                 return;
@@ -98,10 +107,19 @@ class ArenaRoom extends colyseus_1.Room {
                 }
             }
             // Reset attacking flag after animation duration
-            setTimeout(() => {
-                if (attacker)
-                    attacker.attacking = false;
+            // Clear any existing timer for this player
+            const existingTimer = this.activeTimers.get(client.sessionId);
+            if (existingTimer) {
+                clearTimeout(existingTimer);
+            }
+            const timer = setTimeout(() => {
+                const player = this.state.players.get(client.sessionId);
+                if (player) {
+                    player.attacking = false;
+                }
+                this.activeTimers.delete(client.sessionId);
             }, ATTACK_DURATION_MS);
+            this.activeTimers.set(client.sessionId, timer);
         });
         // Handle reset message
         this.onMessage("reset", (client) => {
@@ -116,6 +134,8 @@ class ArenaRoom extends colyseus_1.Room {
                 player.attacking = false;
                 playerIndex++;
             }
+            // Reset winner flag so a new winner can be announced
+            this.winnerAnnounced = false;
             console.log(`✅ All ${this.state.players.size} players reset`);
         });
     }
@@ -131,8 +151,16 @@ class ArenaRoom extends colyseus_1.Room {
         // Spawn positions in a circle around the center
         const centerX = 400;
         const centerY = 300;
-        const radius = 120; // Distance from center
-        const angle = (playerIndex / 12) * Math.PI * 2; // Divide circle into 12 sections
+        // For players 1-12, use inner circle
+        // For players 13+, use outer circle with offset
+        let radius = 120;
+        let actualIndex = playerIndex;
+        if (playerIndex >= 12) {
+            // Outer circle for players beyond 12
+            radius = 180;
+            actualIndex = playerIndex - 12;
+        }
+        const angle = (actualIndex / 12) * Math.PI * 2; // Divide circle into 12 sections
         return {
             x: centerX + Math.cos(angle) * radius,
             y: centerY + Math.sin(angle) * radius
@@ -141,9 +169,38 @@ class ArenaRoom extends colyseus_1.Room {
     onJoin(client, options) {
         const player = new PlayerState_1.PlayerState();
         player.id = client.sessionId;
-        player.name = options.name || "Guest";
+        // Validate and sanitize player name on server side
+        let name = options.name || "Guest";
+        name = name.trim();
+        // Enforce length limits
+        if (name.length > 20) {
+            name = name.substring(0, 20);
+        }
+        if (name.length < 2) {
+            name = "Guest";
+        }
+        // Remove any potentially dangerous characters
+        name = name.replace(/[^a-zA-Z0-9 \-_]/g, "");
+        player.name = name;
         player.committee = options.committee || "Leadership Events Directors";
-        player.color = options.color || 0xffffff; // Sync color from client
+        // Assign color - ensure uniqueness by checking existing players
+        const requestedColor = options.color || 0xffffff;
+        const usedColors = Array.from(this.state.players.values()).map(p => p.color);
+        // Available colors
+        const availableColors = [
+            0xFF6B6B, 0x4ECDC4, 0xFFD93D, 0x95E1D3,
+            0xF38181, 0xAA96DA, 0xFCACA6, 0x6BCF7F,
+            0x4A90E2, 0xE74C3C, 0x9B59B6, 0x3498DB
+        ];
+        // If requested color is available, use it; otherwise assign first unused color
+        if (!usedColors.includes(requestedColor)) {
+            player.color = requestedColor;
+        }
+        else {
+            // Find first unused color
+            const unusedColor = availableColors.find(c => !usedColors.includes(c));
+            player.color = unusedColor || requestedColor; // Fallback to requested if all taken
+        }
         // Spawn player at evenly distributed position
         const playerIndex = this.state.players.size;
         const spawnPos = this.getSpawnPosition(playerIndex);
@@ -161,6 +218,9 @@ class ArenaRoom extends colyseus_1.Room {
      * Check if there's a winner (only 1 player alive)
      */
     checkForWinner() {
+        // Don't check if winner already announced
+        if (this.winnerAnnounced)
+            return;
         const alivePlayers = Array.from(this.state.players.values()).filter(p => p.hp > 0);
         if (alivePlayers.length === 1 && this.state.players.size > 1) {
             const winner = alivePlayers[0];
@@ -170,6 +230,7 @@ class ArenaRoom extends colyseus_1.Room {
                 name: winner.name,
                 committee: winner.committee,
             });
+            this.winnerAnnounced = true;
         }
     }
     /**
@@ -198,6 +259,12 @@ class ArenaRoom extends colyseus_1.Room {
         }
         this.state.players.delete(client.sessionId);
         this.lastAttackTime.delete(client.sessionId);
+        // Clean up any active timers for this player
+        const timer = this.activeTimers.get(client.sessionId);
+        if (timer) {
+            clearTimeout(timer);
+            this.activeTimers.delete(client.sessionId);
+        }
         // Check for winner after player leaves
         this.checkForWinner();
     }

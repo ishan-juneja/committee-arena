@@ -22,9 +22,10 @@ const httpServer = (0, http_1.createServer)(app);
 const gameServer = new colyseus_1.Server({
     server: httpServer,
 });
-// Register the ArenaRoom
+// Register the ArenaRoom with a max capacity of 12 players
 // Clients will connect to this room using "arena" as the room name
-gameServer.define("arena", ArenaRoom_1.ArenaRoom);
+const roomDefinition = gameServer.define("arena", ArenaRoom_1.ArenaRoom);
+// Note: maxClients is set within ArenaRoom.onCreate() for better control
 // Start listening
 httpServer.listen(PORT, () => {
     console.log("╔═══════════════════════════════════════╗");

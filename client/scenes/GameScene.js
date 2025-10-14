@@ -9,8 +9,6 @@
 
 import Network from "../net/Network.js";
 import PlayerSprite from "../entities/PlayerSprite.js";
-import Joystick from "../ui/Joystick.js";
-import AttackButton from "../ui/AttackButton.js";
 
 // Committee definitions with emojis
 const COMMITTEES = {
@@ -76,10 +74,6 @@ export default class GameScene extends Phaser.Scene {
     this.lastNetworkUpdate = 0;
     this.networkUpdateInterval = 50; // Send updates every 50ms (20 times/sec) instead of 60fps
     this.keys = null; // Keyboard controls
-    this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    this.lastMovementDirection = { x: 0, y: 1 }; // Default facing down
-    this.lastAutoAttack = 0;
-    this.autoAttackInterval = 500; // Auto-attack every 500ms when moving
   }
 
   /**
@@ -144,25 +138,33 @@ export default class GameScene extends Phaser.Scene {
       // This ensures we catch all player additions including existing players
       this.setupStateListeners();
       
-      // Create UI controls (only on mobile devices)
-      if (this.isMobile) {
-        this.joystick = new Joystick(this);
-        // No attack button - auto-attack when moving
-      } else {
-        // Show keyboard controls hint for desktop
-        const hint = this.add.text(400, 560, "WASD: Move (Auto-attack while moving)", {
-          fontSize: "14px",
-          color: "#ffffff",
-          backgroundColor: "#000000",
-          padding: { x: 10, y: 5 }
-        }).setOrigin(0.5).setDepth(100).setAlpha(0.7);
-      }
+      // Show keyboard controls hint
+      const hint = this.add.text(400, 560, "WASD: Move | SPACE: Attack", {
+        fontSize: "14px",
+        color: "#ffffff",
+        backgroundColor: "#000000",
+        padding: { x: 10, y: 5 }
+      }).setOrigin(0.5).setDepth(100).setAlpha(0.7);
       
       // Set up death event listener
       this.room.onMessage("death", (data) => this.showDeathScreen(data));
       
       // Set up winner event listener
       this.room.onMessage("winner", (data) => this.showWinnerScreen(data));
+      
+      // Set up error handling
+      this.room.onError((code, message) => {
+        console.error(`❌ Room error (${code}):`, message);
+        this.showErrorScreen(`Connection error: ${message}`);
+      });
+      
+      // Handle disconnection
+      this.room.onLeave((code) => {
+        console.log(`👋 Left room with code: ${code}`);
+        if (code !== 1000) { // 1000 = normal closure
+          this.showErrorScreen("Disconnected from server");
+        }
+      });
       
       // Setup keyboard controls AFTER everything else is ready
       this.setupKeyboardControls();
@@ -333,28 +335,34 @@ export default class GameScene extends Phaser.Scene {
     console.log(`📊 Total players in scene: ${Object.keys(this.players).length}`);
     
     // Listen for changes to this specific player using Colyseus Schema .listen()
-    player.listen("x", (currentValue, previousValue) => {
+    // Store listener callbacks so we can remove them later
+    const listeners = [];
+    
+    listeners.push(player.listen("x", (currentValue, previousValue) => {
       const sprite = this.players[sessionId];
       if (sprite) sprite.updatePosition(player.x, player.y);
-    });
+    }));
     
-    player.listen("y", (currentValue, previousValue) => {
+    listeners.push(player.listen("y", (currentValue, previousValue) => {
       const sprite = this.players[sessionId];
       if (sprite) sprite.updatePosition(player.x, player.y);
-    });
+    }));
     
-    player.listen("hp", (currentValue, previousValue) => {
+    listeners.push(player.listen("hp", (currentValue, previousValue) => {
       const sprite = this.players[sessionId];
       if (sprite) sprite.updateHP(currentValue);
-    });
+    }));
     
-    player.listen("attacking", (currentValue, previousValue) => {
+    listeners.push(player.listen("attacking", (currentValue, previousValue) => {
       const sprite = this.players[sessionId];
       if (sprite && currentValue === true) {
         console.log(`💥 ${player.name} attacking!`);
         sprite.showAttacking();
       }
-    });
+    }));
+    
+    // Store listeners on the sprite for cleanup
+    playerSprite.schemaListeners = listeners;
     
     return playerSprite;
   }
@@ -385,6 +393,16 @@ export default class GameScene extends Phaser.Scene {
       
       const sprite = this.players[sessionId];
       if (sprite) {
+        // Clean up schema listeners to prevent memory leaks
+        if (sprite.schemaListeners) {
+          sprite.schemaListeners.forEach(listener => {
+            if (listener && typeof listener === 'function') {
+              listener(); // Call the listener to unsubscribe
+            }
+          });
+          sprite.schemaListeners = null;
+        }
+        
         sprite.destroy();
         delete this.players[sessionId];
       }
@@ -415,14 +433,15 @@ export default class GameScene extends Phaser.Scene {
       }
     }
     
-    // Get movement vector from keyboard or joystick
+    // Get movement vector from keyboard
     let vec = { x: 0, y: 0 };
     
-    if (this.isMobile && this.joystick) {
-      // Mobile: use joystick
-      vec = this.joystick.getVector();
-    } else if (this.keys) {
-      // Desktop: use WASD keys
+    // Check if player is alive
+    const myPlayer = this.players[this.mySessionId];
+    const isAlive = myPlayer && myPlayer.hp > 0;
+    
+    if (this.keys && isAlive) {
+      // Desktop: use WASD keys (only if alive)
       if (this.keys.W.isDown) vec.y = -1;
       if (this.keys.S.isDown) vec.y = 1;
       if (this.keys.A.isDown) vec.x = -1;
@@ -437,15 +456,9 @@ export default class GameScene extends Phaser.Scene {
       
       // Manual attack with SPACE bar (500ms cooldown)
       if (this.keys.SPACE.isDown && time - this.lastSpacePress > 500) {
-        console.log("🎯 SPACE - Attack!");
         this.network.sendAttack();
         this.lastSpacePress = time;
       }
-    }
-    
-    // Track movement direction
-    if (vec.x !== 0 || vec.y !== 0) {
-      this.lastMovementDirection = { x: vec.x, y: vec.y };
     }
     
     // Throttle network updates to prevent excessive traffic
@@ -600,6 +613,13 @@ export default class GameScene extends Phaser.Scene {
     ).setOrigin(1, 0).setDepth(5000).setInteractive();
     
     resetBtn.on('pointerdown', () => {
+      // Confirm before resetting
+      const confirmed = confirm("Are you sure you want to reset the game? This will reset all players and reload the page.");
+      
+      if (!confirmed) {
+        return;
+      }
+      
       console.log("🔄 Resetting game...");
       
       // Send reset to server to reset all player states
@@ -618,6 +638,36 @@ export default class GameScene extends Phaser.Scene {
     
     resetBtn.on('pointerout', () => {
       resetBtn.setStyle({ backgroundColor: "#ff4444" });
+    });
+  }
+
+  /**
+   * Shows error screen when connection is lost
+   */
+  showErrorScreen(message) {
+    const overlay = this.add.rectangle(
+      400, 300, 800, 600, 0x000000, 0.9
+    ).setDepth(9000);
+    
+    const errorText = this.add.text(
+      400, 250, "⚠️ CONNECTION ERROR",
+      { fontSize: "32px", color: "#ff0000", fontStyle: "bold" }
+    ).setOrigin(0.5).setDepth(9001);
+    
+    const messageText = this.add.text(
+      400, 310, message,
+      { fontSize: "18px", color: "#ffffff" }
+    ).setOrigin(0.5).setDepth(9001);
+    
+    const reloadText = this.add.text(
+      400, 370, "Click to reload",
+      { fontSize: "16px", color: "#aaaaaa" }
+    ).setOrigin(0.5).setDepth(9001);
+    
+    // Make overlay clickable to reload
+    overlay.setInteractive();
+    overlay.on('pointerdown', () => {
+      window.location.reload();
     });
   }
 
