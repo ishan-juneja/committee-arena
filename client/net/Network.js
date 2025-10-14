@@ -33,16 +33,18 @@ export default class Network {
    * Joins or creates an arena room
    * @param {string} name - Player's display name
    * @param {string} committee - Player's committee affiliation
+   * @param {number} color - Player's color (hex number)
    * @returns {Promise<Room>} The joined room instance
    */
-  async join(name, committee) {
+  async join(name, committee, color) {
     try {
       this.room = await this.client.joinOrCreate("arena", { 
         name, 
-        committee 
+        committee,
+        color
       });
       
-      console.log(`✅ Joined arena as ${name} (${committee})`);
+      console.log(`✅ Joined arena as ${name} (${committee}) with color 0x${color.toString(16)}`);
       return this.room;
     } catch (error) {
       console.error("❌ Failed to join room:", error);

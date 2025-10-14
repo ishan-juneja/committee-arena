@@ -302,15 +302,8 @@ export default class GameScene extends Phaser.Scene {
   createPlayerSprite(player, sessionId) {
     console.log(`➕ Creating sprite: ${player.name} at (${player.x}, ${player.y})`);
     
-    // Use player's selected color if it's the local player, otherwise use committee color
-    let color;
-    if (sessionId === this.mySessionId) {
-      color = this.myPlayerColor;
-      console.log(`⭐ This is YOUR player! Color: ${color.toString(16)}`);
-    } else {
-      const committee = COMMITTEES[player.committee] || { color: 0xffffff };
-      color = committee.color;
-    }
+    // Use color from server (synced across all clients)
+    const color = player.color || 0xffffff;
     
     console.log(`🔍 Creating sprite for ${player.name} at (${player.x}, ${player.y}) with color ${color.toString(16)}`);
     

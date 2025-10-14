@@ -13,5 +13,6 @@ export class PlayerState extends Schema {
   @type("number") hp: number = 3;
   @type("string") committee: string = "";
   @type("boolean") attacking: boolean = false;
+  @type("number") color: number = 0xffffff; // Player color (synced across all clients)
 }
 
