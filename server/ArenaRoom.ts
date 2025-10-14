@@ -36,7 +36,16 @@ export class ArenaRoom extends Room<ArenaState> {
     // Clients send { dx, dy } to move their character
     this.onMessage("move", (client, data) => {
       const player = this.state.players.get(client.sessionId);
-      if (!player) return;
+      if (!player) {
+        console.log(`⚠️ Move message from unknown player: ${client.sessionId}`);
+        return;
+      }
+      
+      // Only process if there's actual movement
+      if (data.dx === 0 && data.dy === 0) return;
+      
+      const oldX = player.x;
+      const oldY = player.y;
       
       // Update player position based on movement vector
       player.x += data.dx;
@@ -45,6 +54,8 @@ export class ArenaRoom extends Room<ArenaState> {
       // Keep player within bounds
       player.x = Math.max(0, Math.min(800, player.x));
       player.y = Math.max(0, Math.min(600, player.y));
+      
+      console.log(`🚶 ${player.name} moved: (${oldX.toFixed(0)}, ${oldY.toFixed(0)}) → (${player.x.toFixed(0)}, ${player.y.toFixed(0)})`);
     });
 
     // Handle attack messages
@@ -66,6 +77,7 @@ export class ArenaRoom extends Room<ArenaState> {
 
       // Set attacking flag (useful for animations on client)
       attacker.attacking = true;
+      console.log(`👊 ${attacker.name} is attacking at (${attacker.x.toFixed(0)}, ${attacker.y.toFixed(0)})`)
       
       // Check all other players for hits
       for (const [targetId, target] of this.state.players.entries()) {
