@@ -57,6 +57,7 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
    * @param {number} y - New y coordinate
    */
   updatePosition(x, y) {
+    console.log(`🎯 ${this.playerName} updatePosition called: (${x.toFixed(1)}, ${y.toFixed(1)})`);
     this.targetX = x;
     this.targetY = y;
   }
@@ -66,9 +67,18 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
    * Prevents choppy movement when network updates are throttled
    */
   smoothUpdate() {
+    const oldX = this.x;
+    const oldY = this.y;
+    
     // Linear interpolation for smooth movement
     this.x += (this.targetX - this.x) * this.lerpSpeed;
     this.y += (this.targetY - this.y) * this.lerpSpeed;
+    
+    // Log only if there was actual movement
+    const moved = Math.abs(this.x - oldX) > 0.1 || Math.abs(this.y - oldY) > 0.1;
+    if (moved) {
+      console.log(`🚶 ${this.playerName} smoothUpdate: (${this.x.toFixed(1)}, ${this.y.toFixed(1)})`);
+    }
   }
 
   /**

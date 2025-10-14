@@ -345,23 +345,32 @@ export default class GameScene extends Phaser.Scene {
     console.log(`✅ Player sprite FULLY CREATED at (${playerSprite.x}, ${playerSprite.y})`);
     console.log(`📊 Total players in scene: ${Object.keys(this.players).length}`);
     
-    // Listen for changes to this specific player
-    player.onChange = (changes) => {
+    // Listen for changes to this specific player using Colyseus Schema .listen()
+    player.listen("x", (currentValue, previousValue) => {
+      console.log(`🔄 ${player.name} X changed: ${previousValue} → ${currentValue}`);
       const sprite = this.players[sessionId];
-      if (!sprite) return;
-      
-      // Always update position (server is authoritative)
-      sprite.updatePosition(player.x, player.y);
-      
-      // Update HP
-      sprite.updateHP(player.hp);
-      
-      // Trigger attack animation
-      if (player.attacking) {
-        console.log(`💥 ${player.name} attacking!`);
+      if (sprite) sprite.updatePosition(player.x, player.y);
+    });
+    
+    player.listen("y", (currentValue, previousValue) => {
+      console.log(`🔄 ${player.name} Y changed: ${previousValue} → ${currentValue}`);
+      const sprite = this.players[sessionId];
+      if (sprite) sprite.updatePosition(player.x, player.y);
+    });
+    
+    player.listen("hp", (currentValue, previousValue) => {
+      console.log(`💔 ${player.name} HP: ${previousValue} → ${currentValue}`);
+      const sprite = this.players[sessionId];
+      if (sprite) sprite.updateHP(currentValue);
+    });
+    
+    player.listen("attacking", (currentValue, previousValue) => {
+      console.log(`👊 ${player.name} attacking: ${previousValue} → ${currentValue}`);
+      const sprite = this.players[sessionId];
+      if (sprite && currentValue === true) {
         sprite.showAttacking();
       }
-    };
+    });
     
     return playerSprite;
   }
