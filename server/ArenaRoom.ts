@@ -44,9 +44,6 @@ export class ArenaRoom extends Room<ArenaState> {
       // Only process if there's actual movement
       if (data.dx === 0 && data.dy === 0) return;
       
-      const oldX = player.x;
-      const oldY = player.y;
-      
       // Update player position based on movement vector
       player.x += data.dx;
       player.y += data.dy;
@@ -55,7 +52,7 @@ export class ArenaRoom extends Room<ArenaState> {
       player.x = Math.max(0, Math.min(800, player.x));
       player.y = Math.max(0, Math.min(600, player.y));
       
-      console.log(`🚶 ${player.name} moved: (${oldX.toFixed(0)}, ${oldY.toFixed(0)}) → (${player.x.toFixed(0)}, ${player.y.toFixed(0)})`);
+      // Removed excessive movement logging to keep console clean
     });
 
     // Handle attack messages

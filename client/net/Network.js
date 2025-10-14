@@ -93,7 +93,7 @@ export default class Network {
         dx: vec.x * 3, // Movement speed multiplier
         dy: vec.y * 3 
       };
-      console.log(`📤 Sending movement:`, movement);
+      // Only log occasionally to avoid flooding console
       this.room.send("move", movement);
     }
   }

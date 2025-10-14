@@ -132,32 +132,17 @@ export default class GameScene extends Phaser.Scene {
       // Store player sprites by ID
       this.players = {};
       
-      // Join the arena room (send color to server for sync)
+      // Set up network join with proper state listener setup
       // Pass reconnection token if available
       const reconnectToken = localStorage.getItem('arenaReconnectToken');
       this.room = await this.network.join(playerName, playerCommittee, playerColor, reconnectToken);
       this.mySessionId = this.room.sessionId;
       
       console.log(`🔗 Connected! Session ID: ${this.mySessionId}`);
-      console.log(`📊 Players already in room: ${this.room.state.players.size}`);
       
-      // Set up server state listeners FIRST
+      // Set up server state listeners IMMEDIATELY after joining
+      // This ensures we catch all player additions including existing players
       this.setupStateListeners();
-      
-      // Wait for the first state sync, then create sprites
-      console.log("⏳ Waiting for first state patch...");
-      
-      // Use onStateChange to ensure we have the complete state
-      this.room.onStateChange.once((state) => {
-        console.log("✅ First state received!");
-        console.log(`📊 Players in state: ${state.players.size}`);
-        
-        // Now create sprites for all players
-        state.players.forEach((player, sessionId) => {
-          console.log(`🔄 Creating sprite for player in state: ${player.name}`);
-          this.createPlayerSprite(player, sessionId);
-        });
-      });
       
       // Create UI controls (only on mobile devices)
       if (this.isMobile) {
@@ -381,13 +366,18 @@ export default class GameScene extends Phaser.Scene {
   setupStateListeners() {
     console.log("🎧 Setting up state listeners...");
     
-    // When a new player joins
+    // When a new player joins (or when we first sync with existing players)
     this.room.state.players.onAdd = (player, sessionId) => {
-      console.log(`🆕 onAdd triggered for: ${player.name}`);
+      console.log(`🆕 Player detected: ${player.name} at (${player.x}, ${player.y})`);
+      
+      // Avoid double creation
+      if (this.players[sessionId]) {
+        console.log(`⚠️ Player ${player.name} sprite already exists, skipping creation`);
+        return;
+      }
+      
       this.createPlayerSprite(player, sessionId);
     };
-    
-    console.log("✅ State listeners set up!");
 
     // When a player leaves
     this.room.state.players.onRemove = (player, sessionId) => {
@@ -399,6 +389,8 @@ export default class GameScene extends Phaser.Scene {
         delete this.players[sessionId];
       }
     };
+    
+    console.log("✅ State listeners set up!");
   }
 
   /**
@@ -610,14 +602,11 @@ export default class GameScene extends Phaser.Scene {
     resetBtn.on('pointerdown', () => {
       console.log("🔄 Resetting game...");
       
-      // Clear saved session and reconnection token
-      localStorage.removeItem('arenaSession');
-      localStorage.removeItem('arenaReconnectToken');
-      
       // Send reset to server to reset all player states
       this.network.sendReset();
       
-      // Reload page after short delay
+      // Reload page after short delay to reset UI state
+      // Keep session data so players stay logged in
       setTimeout(() => {
         window.location.reload();
       }, 500);
