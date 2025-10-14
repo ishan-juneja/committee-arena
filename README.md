@@ -5,19 +5,26 @@ A real-time multiplayer arena game built with Colyseus and Phaser 3, where playe
 ## 🎮 Features
 
 - **Real-time Multiplayer**: Powered by Colyseus WebSocket server
-- **Smooth Movement**: Virtual joystick controls for mobile and desktop
-- **Combat System**: Attack other players with a punch button
+- **Optimized for 8-12 Players**: Smooth performance with throttled network updates
+- **Smooth Movement**: Virtual joystick with client-side interpolation (60fps)
+- **Combat System**: Attack other players with punch button and visual radius
 - **Health System**: Each player has 3 HP with visual hearts display
-- **Committee Themes**: Random committee assignment with unique emojis
-- **Death Screens**: Beautiful overlay when a player is defeated
+- **Committee Themes**: Name-based committee assignment with unique emojis
+- **Death Screens**: Beautiful overlay with committee emoji on defeat
 - **Player Names**: Each player has a visible name label
+- **Attack Cooldown**: Spam prevention with 500ms cooldown
 - **Responsive Design**: Works on desktop and mobile devices
 
 ## 🏛️ Committees
 
-- ☕ **Coffee Chats** (Brown)
-- 💼 **Professional Development** (Blue)
-- 👩‍💼 **IWAB** (Purple)
+Players are automatically assigned to committees based on their name:
+
+- 🏆 **Leadership Events Directors** (Gold) - Ethan, Hailey, Sarah, etc.
+- 🎙 **Interview With A Bruin (IWAB)** (Blue) - Manuela, Elizabeth, Yangyang, etc.
+- ☕ **Coffee Chat Directors** (Brown) - Katie, Mei, etc.
+- ⭐ **Associate Director** (Pink) - Arielle (special role)
+
+*Names not matching specific patterns are randomly assigned to one of the main three committees.*
 
 ## 🗂️ Project Structure
 
