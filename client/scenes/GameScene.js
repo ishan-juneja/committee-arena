@@ -129,12 +129,24 @@ export default class GameScene extends Phaser.Scene {
     this.setupKeyboardControls();
     
     try {
-      // Join the arena room
-      this.room = await this.network.join(playerName, playerCommittee);
-      
       // Store player sprites by ID
       this.players = {};
+      
+      // Join the arena room
+      this.room = await this.network.join(playerName, playerCommittee);
       this.mySessionId = this.room.sessionId;
+      
+      console.log(`🔗 Connected! Session ID: ${this.mySessionId}`);
+      console.log(`📊 Players already in room: ${this.room.state.players.size}`);
+      
+      // Set up server state listeners FIRST
+      this.setupStateListeners();
+      
+      // CRITICAL: Manually create sprites for any players already in the room
+      this.room.state.players.forEach((player, sessionId) => {
+        console.log(`🔄 Found existing player: ${player.name} at (${player.x}, ${player.y})`);
+        this.createPlayerSprite(player, sessionId);
+      });
       
       // Create UI controls (only on mobile devices)
       if (this.isMobile) {
@@ -149,9 +161,6 @@ export default class GameScene extends Phaser.Scene {
           padding: { x: 10, y: 5 }
         }).setOrigin(0.5).setDepth(100).setAlpha(0.7);
       }
-      
-      // Set up server state listeners
-      this.setupStateListeners();
       
       // Set up death event listener
       this.room.onMessage("death", (data) => this.showDeathScreen(data));
@@ -253,74 +262,85 @@ export default class GameScene extends Phaser.Scene {
   }
 
   /**
+   * Creates a player sprite (extracted method for reuse)
+   */
+  createPlayerSprite(player, sessionId) {
+    console.log(`➕ Creating sprite: ${player.name} at (${player.x}, ${player.y})`);
+    
+    // Use player's selected color if it's the local player, otherwise use committee color
+    let color;
+    if (sessionId === this.mySessionId) {
+      color = this.myPlayerColor;
+      console.log(`⭐ This is YOUR player! Color: ${color.toString(16)}`);
+    } else {
+      const committee = COMMITTEES[player.committee] || { color: 0xffffff };
+      color = committee.color;
+    }
+    
+    console.log(`🔍 Creating sprite for ${player.name} at (${player.x}, ${player.y}) with color ${color.toString(16)}`);
+    
+    // Create player sprite
+    const playerSprite = new PlayerSprite(
+      this, 
+      sessionId, 
+      player.name,
+      color
+    );
+    
+    console.log(`🔍 Sprite object created, now setting position...`);
+    
+    // Set initial position - CRITICAL!
+    playerSprite.x = player.x;
+    playerSprite.y = player.y;
+    playerSprite.targetX = player.x;
+    playerSprite.targetY = player.y;
+    playerSprite.setPosition(player.x, player.y);
+    playerSprite.updatePosition(player.x, player.y);
+    playerSprite.updateHP(player.hp);
+    
+    console.log(`🔍 Position set: Container at (${playerSprite.x}, ${playerSprite.y}), visible: ${playerSprite.visible}, depth: ${playerSprite.depth}`);
+    
+    // Make absolutely sure it's visible and on top
+    playerSprite.setVisible(true);
+    playerSprite.setActive(true);
+    playerSprite.setDepth(100); // WAY above background
+    
+    // Highlight own player with yellow glow
+    if (sessionId === this.mySessionId) {
+      playerSprite.body.setStrokeStyle(4, 0xffff00, 1);
+      console.log(`💛 Yellow glow added to YOUR player!`);
+    }
+    
+    this.players[sessionId] = playerSprite;
+    
+    console.log(`✅ Player sprite FULLY CREATED at (${playerSprite.x}, ${playerSprite.y})`);
+    console.log(`📊 Total players in scene: ${Object.keys(this.players).length}`);
+    
+    // Listen for changes to this specific player
+    player.onChange = () => {
+      const sprite = this.players[sessionId];
+      if (sprite) {
+        sprite.updatePosition(player.x, player.y);
+        sprite.updateHP(player.hp);
+        
+        if (player.attacking) {
+          sprite.showAttacking();
+        }
+      }
+    };
+    
+    return playerSprite;
+  }
+
+  /**
    * Sets up listeners for server state changes
    * Handles player additions, removals, and updates
    */
   setupStateListeners() {
     // When a new player joins
     this.room.state.players.onAdd = (player, sessionId) => {
-      console.log(`➕ Player joined: ${player.name} at (${player.x}, ${player.y})`);
-      
-      // Use player's selected color if it's the local player, otherwise use committee color
-      let color;
-      if (sessionId === this.mySessionId) {
-        color = this.myPlayerColor;
-      } else {
-        const committee = COMMITTEES[player.committee] || { color: 0xffffff };
-        color = committee.color;
-      }
-      
-      console.log(`🔍 Creating sprite for ${player.name} at (${player.x}, ${player.y}) with color ${color.toString(16)}`);
-      
-      // Create player sprite
-      const playerSprite = new PlayerSprite(
-        this, 
-        sessionId, 
-        player.name,
-        color
-      );
-      
-      console.log(`🔍 Sprite created, now setting position...`);
-      
-      // Set initial position - CRITICAL!
-      playerSprite.x = player.x;
-      playerSprite.y = player.y;
-      playerSprite.targetX = player.x;
-      playerSprite.targetY = player.y;
-      playerSprite.setPosition(player.x, player.y); // Use Phaser's setPosition method
-      playerSprite.updatePosition(player.x, player.y);
-      playerSprite.updateHP(player.hp);
-      
-      console.log(`🔍 Position set: Container at (${playerSprite.x}, ${playerSprite.y}), visible: ${playerSprite.visible}, depth: ${playerSprite.depth}`);
-      
-      // Make absolutely sure it's visible
-      playerSprite.setVisible(true);
-      playerSprite.setActive(true);
-      playerSprite.setDepth(10); // Above background
-      
-      // Highlight own player with yellow glow
-      if (sessionId === this.mySessionId) {
-        playerSprite.body.setStrokeStyle(4, 0xffff00, 1);
-        console.log(`⭐ This is YOUR player!`);
-      }
-      
-      this.players[sessionId] = playerSprite;
-      
-      console.log(`✅ Player sprite FULLY CREATED at (${playerSprite.x}, ${playerSprite.y})`);
-      console.log(`📊 Total players in scene: ${Object.keys(this.players).length}`);
-      
-      // Listen for changes to this specific player
-      player.onChange = () => {
-        const sprite = this.players[sessionId];
-        if (sprite) {
-          sprite.updatePosition(player.x, player.y);
-          sprite.updateHP(player.hp);
-          
-          if (player.attacking) {
-            sprite.showAttacking();
-          }
-        }
-      };
+      console.log(`🆕 onAdd triggered for: ${player.name}`);
+      this.createPlayerSprite(player, sessionId);
     };
 
     // When a player leaves
