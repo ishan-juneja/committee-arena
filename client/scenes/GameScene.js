@@ -138,6 +138,14 @@ export default class GameScene extends Phaser.Scene {
       // This ensures we catch all player additions including existing players
       this.setupStateListeners();
       
+      // IMPORTANT: Create sprites for any players already in the room
+      // This handles reconnection cases where onAdd won't fire for existing players
+      console.log(`📊 Creating sprites for ${this.room.state.players.size} existing players`);
+      this.room.state.players.forEach((player, sessionId) => {
+        console.log(`🔄 Creating sprite for existing player: ${player.name}`);
+        this.createPlayerSprite(player, sessionId);
+      });
+      
       // Show keyboard controls hint
       const hint = this.add.text(400, 560, "WASD: Move | SPACE: Attack", {
         fontSize: "14px",
