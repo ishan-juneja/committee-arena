@@ -329,15 +329,19 @@ export default class GameScene extends Phaser.Scene {
     console.log(`📊 Total players in scene: ${Object.keys(this.players).length}`);
     
     // Listen for changes to this specific player
-    player.onChange = () => {
+    player.onChange = (changes) => {
       const sprite = this.players[sessionId];
-      if (sprite) {
-        sprite.updatePosition(player.x, player.y);
-        sprite.updateHP(player.hp);
-        
-        if (player.attacking) {
-          sprite.showAttacking();
-        }
+      if (!sprite) return;
+      
+      // Update position if changed
+      sprite.updatePosition(player.x, player.y);
+      
+      // Update HP if changed
+      sprite.updateHP(player.hp);
+      
+      // Show attack animation if attacking
+      if (player.attacking) {
+        sprite.showAttacking();
       }
     };
     
@@ -377,7 +381,7 @@ export default class GameScene extends Phaser.Scene {
    * Handles smooth interpolation, keyboard/joystick input, and throttled network updates.
    */
   update(time) {
-    if (!this.network) return;
+    if (!this.network || !this.room) return;
     
     // Smooth interpolation for all players (prevents choppy movement)
     for (const id in this.players) {
@@ -395,10 +399,22 @@ export default class GameScene extends Phaser.Scene {
       vec = this.joystick.getVector();
     } else if (this.keys) {
       // Desktop: use WASD keys
-      if (this.keys.W.isDown) vec.y = -1;
-      if (this.keys.S.isDown) vec.y = 1;
-      if (this.keys.A.isDown) vec.x = -1;
-      if (this.keys.D.isDown) vec.x = 1;
+      if (this.keys.W.isDown) {
+        vec.y = -1;
+        console.log("W pressed - moving up");
+      }
+      if (this.keys.S.isDown) {
+        vec.y = 1;
+        console.log("S pressed - moving down");
+      }
+      if (this.keys.A.isDown) {
+        vec.x = -1;
+        console.log("A pressed - moving left");
+      }
+      if (this.keys.D.isDown) {
+        vec.x = 1;
+        console.log("D pressed - moving right");
+      }
       
       // Normalize diagonal movement
       if (vec.x !== 0 && vec.y !== 0) {
@@ -412,8 +428,8 @@ export default class GameScene extends Phaser.Scene {
     if (vec.x !== 0 || vec.y !== 0) {
       this.lastMovementDirection = { x: vec.x, y: vec.y };
       
-      // Auto-attack while moving
-      if (time - this.lastAutoAttack > this.autoAttackInterval) {
+      // Auto-attack while moving (less frequently - every 800ms)
+      if (time - this.lastAutoAttack > 800) {
         this.network.sendAttack();
         this.lastAutoAttack = time;
       }

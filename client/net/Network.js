@@ -59,10 +59,12 @@ export default class Network {
     
     // Only send if there's actual movement
     if (vec.x !== 0 || vec.y !== 0) {
-      this.room.send("move", { 
+      const movement = { 
         dx: vec.x * 3, // Movement speed multiplier
         dy: vec.y * 3 
-      });
+      };
+      console.log(`📤 Sending movement:`, movement);
+      this.room.send("move", movement);
     }
   }
 
