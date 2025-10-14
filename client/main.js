@@ -8,8 +8,25 @@ import GameScene from "./scenes/GameScene.js";
 
 // Wait for login before starting game
 let gameInstance = null;
-let playerName = null;
-let playerColor = 0xFF6B6B; // Default red
+let playerName = '';
+let playerColor = 0xFF6B6B; // Default to first color
+
+// Check for saved session (reconnection)
+const savedSession = localStorage.getItem('arenaSession');
+let autoJoin = false;
+
+if (savedSession) {
+  try {
+    const sessionData = JSON.parse(savedSession);
+    playerName = sessionData.name;
+    playerColor = sessionData.color;
+    autoJoin = true;
+    console.log('🔄 Found saved session, will auto-reconnect...');
+  } catch (e) {
+    console.log('⚠️ Could not restore session');
+    localStorage.removeItem('arenaSession');
+  }
+}
 
 // Handle login
 const loginScreen = document.getElementById('login-screen');
@@ -19,86 +36,74 @@ const randomNameBtn = document.getElementById('random-name-btn');
 const controlsHint = document.getElementById('controls-hint');
 const colorOptions = document.querySelectorAll('.color-option');
 
-  // If we have a saved session, auto-login
-  if (savedSession && playerName) {
-    playerNameInput.value = playerName;
-    // Set the saved color
-    colorOptions.forEach(opt => {
-      opt.classList.remove('selected');
-      if (parseInt(opt.dataset.color, 16) === playerColor) {
-        opt.classList.add('selected');
-      }
+// Hide random name button (user doesn't want it)
+if (randomNameBtn) {
+  randomNameBtn.style.display = 'none';
+}
+
+// If we have a saved session, auto-join
+if (autoJoin && playerName) {
+  console.log('✅ Auto-joining with saved session...');
+  loginScreen.classList.add('hidden');
+  controlsHint.style.display = 'block';
+  startGame();
+} else {
+  // Auto-focus name input
+  playerNameInput.focus();
+  
+  // Color selection
+  colorOptions[0].classList.add('selected'); // Select first color by default
+  colorOptions.forEach(option => {
+    option.addEventListener('click', () => {
+      colorOptions.forEach(opt => opt.classList.remove('selected'));
+      option.classList.add('selected');
+      playerColor = parseInt(option.dataset.color, 16);
     });
+  });
+
+  // Join button
+  joinButton.addEventListener('click', () => {
+    playerName = playerNameInput.value.trim();
+    if (playerName.length === 0) {
+      alert("Please enter your name!");
+      return;
+    }
     
-    console.log('✅ Session restored, auto-joining...');
+    // Save session for reconnection
+    localStorage.setItem('arenaSession', JSON.stringify({
+      name: playerName,
+      color: playerColor,
+      timestamp: Date.now()
+    }));
+    
     loginScreen.classList.add('hidden');
     controlsHint.style.display = 'block';
     startGame();
-    return;
-  }
-  
-  // Auto-focus name input (no random name)
-  playerNameInput.focus();
-
-  // Hide random name button since user doesn't want it
-  randomNameBtn.style.display = 'none';
-
-// Color selection
-colorOptions[0].classList.add('selected'); // Select first color by default
-colorOptions.forEach(option => {
-  option.addEventListener('click', () => {
-    colorOptions.forEach(opt => opt.classList.remove('selected'));
-    option.classList.add('selected');
-    playerColor = parseInt(option.dataset.color, 16);
   });
-});
 
-// Handle Enter key in input
-playerNameInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    joinButton.click();
-  }
-});
+  // Allow Enter key to join
+  playerNameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      joinButton.click();
+    }
+  });
+}
 
-joinButton.addEventListener('click', () => {
-  const name = playerNameInput.value.trim();
-  
-  if (!name) {
-    playerNameInput.style.borderColor = '#ff0000';
-    playerNameInput.placeholder = 'Please enter a name!';
-    playerNameInput.focus();
-    return;
-  }
-  
-  playerName = name;
-  
-  // Hide login screen
-  loginScreen.classList.add('hidden');
-  
-  // Show controls hint
-  controlsHint.style.display = 'block';
-  setTimeout(() => {
-    controlsHint.style.display = 'none';
-  }, 5000);
-  
-  // Start the game
-  startGame();
-});
-
+/**
+ * Start the Phaser game
+ */
 function startGame() {
-  // Phaser game configuration
   const config = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 600,
+    width: 800, // Fixed width for consistent game area
+    height: 600, // Fixed height
+    parent: 'game-container',
     backgroundColor: "#0b1020",
-    parent: "game-container",
     scene: [GameScene],
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    // Pass player name and color to game
     callbacks: {
       preBoot: (game) => {
         game.registry.set('playerName', playerName);
@@ -107,9 +112,5 @@ function startGame() {
     }
   };
 
-  // Create and launch the game
   gameInstance = new Phaser.Game(config);
 }
-
-// Export for debugging
-window.gameInstance = gameInstance;
