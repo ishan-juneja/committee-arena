@@ -133,7 +133,9 @@ export default class GameScene extends Phaser.Scene {
       this.players = {};
       
       // Join the arena room (send color to server for sync)
-      this.room = await this.network.join(playerName, playerCommittee, playerColor);
+      // Pass reconnection token if available
+      const reconnectToken = localStorage.getItem('arenaReconnectToken');
+      this.room = await this.network.join(playerName, playerCommittee, playerColor, reconnectToken);
       this.mySessionId = this.room.sessionId;
       
       console.log(`🔗 Connected! Session ID: ${this.mySessionId}`);
@@ -608,8 +610,9 @@ export default class GameScene extends Phaser.Scene {
     resetBtn.on('pointerdown', () => {
       console.log("🔄 Resetting game...");
       
-      // Clear saved session
+      // Clear saved session and reconnection token
       localStorage.removeItem('arenaSession');
+      localStorage.removeItem('arenaReconnectToken');
       
       // Send reset to server to reset all player states
       this.network.sendReset();

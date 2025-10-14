@@ -31,6 +31,9 @@ export class ArenaRoom extends Room<ArenaState> {
    */
   onCreate() {
     this.setState(new ArenaState());
+    
+    // Enable reconnection - players can rejoin within 60 seconds
+    this.allowReconnection(60);
 
     // Handle player movement messages
     // Clients send { dx, dy } to move their character
@@ -201,13 +204,30 @@ export class ArenaRoom extends Room<ArenaState> {
    * Called when a player disconnects.
    * Removes the player from the game state.
    */
-  onLeave(client: Client) {
+  async onLeave(client: Client, consented: boolean) {
     const player = this.state.players.get(client.sessionId);
+    
     if (player) {
-      console.log(`👋 ${player.name} left the game`);
+      console.log(`👋 ${player.name} disconnected`);
+      
+      // Allow reconnection within allowReconnection time
+      try {
+        if (!consented) {
+          console.log(`⏳ Allowing ${player.name} to reconnect for 60 seconds...`);
+          await this.allowReconnection(client, 60);
+          console.log(`✅ ${player.name} reconnected!`);
+          return; // Player reconnected, don't remove them
+        }
+      } catch (e) {
+        console.log(`❌ ${player.name} did not reconnect in time`);
+      }
+      
+      // Player didn't reconnect, remove them
+      console.log(`🗑️ Removing ${player.name} from game`);
     }
+    
     this.state.players.delete(client.sessionId);
-    this.lastAttackTime.delete(client.sessionId); // Clean up attack cooldown tracking
+    this.lastAttackTime.delete(client.sessionId);
     
     // Check for winner after player leaves
     this.checkForWinner();

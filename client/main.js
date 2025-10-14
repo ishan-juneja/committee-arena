@@ -13,6 +13,7 @@ let playerColor = 0xFF6B6B; // Default to first color
 
 // Check for saved session (reconnection)
 const savedSession = localStorage.getItem('arenaSession');
+const reconnectToken = localStorage.getItem('arenaReconnectToken');
 let autoJoin = false;
 
 if (savedSession) {
@@ -21,10 +22,16 @@ if (savedSession) {
     playerName = sessionData.name;
     playerColor = sessionData.color;
     autoJoin = true;
-    console.log('🔄 Found saved session, will auto-reconnect...');
+    
+    if (reconnectToken) {
+      console.log('🔄 Found saved session + reconnect token, will restore your state...');
+    } else {
+      console.log('🔄 Found saved session, will auto-reconnect...');
+    }
   } catch (e) {
     console.log('⚠️ Could not restore session');
     localStorage.removeItem('arenaSession');
+    localStorage.removeItem('arenaReconnectToken');
   }
 }
 

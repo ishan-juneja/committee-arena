@@ -34,15 +34,36 @@ export default class Network {
    * @param {string} name - Player's display name
    * @param {string} committee - Player's committee affiliation
    * @param {number} color - Player's color (hex number)
+   * @param {string} reconnectionToken - Optional token for reconnection
    * @returns {Promise<Room>} The joined room instance
    */
-  async join(name, committee, color) {
+  async join(name, committee, color, reconnectionToken = null) {
     try {
+      // Try to reconnect first if we have a token
+      if (reconnectionToken) {
+        try {
+          console.log(`🔄 Attempting to reconnect with saved token...`);
+          this.room = await this.client.reconnect(reconnectionToken);
+          console.log(`✅ Reconnected successfully! Maintaining your state.`);
+          return this.room;
+        } catch (reconnectError) {
+          console.log(`⚠️ Reconnection failed, joining as new player...`);
+          // Fall through to normal join
+        }
+      }
+      
+      // Normal join/create
       this.room = await this.client.joinOrCreate("arena", { 
         name, 
         committee,
         color
       });
+      
+      // Save reconnection token for future refreshes
+      if (this.room.reconnectionToken) {
+        localStorage.setItem('arenaReconnectToken', this.room.reconnectionToken);
+        console.log(`💾 Saved reconnection token for future refreshes`);
+      }
       
       console.log(`✅ Joined arena as ${name} (${committee}) with color 0x${color.toString(16)}`);
       return this.room;
