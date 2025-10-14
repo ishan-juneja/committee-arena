@@ -19,11 +19,29 @@ const randomNameBtn = document.getElementById('random-name-btn');
 const controlsHint = document.getElementById('controls-hint');
 const colorOptions = document.querySelectorAll('.color-option');
 
-// Auto-focus name input (no random name)
-playerNameInput.focus();
+  // If we have a saved session, auto-login
+  if (savedSession && playerName) {
+    playerNameInput.value = playerName;
+    // Set the saved color
+    colorOptions.forEach(opt => {
+      opt.classList.remove('selected');
+      if (parseInt(opt.dataset.color, 16) === playerColor) {
+        opt.classList.add('selected');
+      }
+    });
+    
+    console.log('✅ Session restored, auto-joining...');
+    loginScreen.classList.add('hidden');
+    controlsHint.style.display = 'block';
+    startGame();
+    return;
+  }
+  
+  // Auto-focus name input (no random name)
+  playerNameInput.focus();
 
-// Hide random name button since user doesn't want it
-randomNameBtn.style.display = 'none';
+  // Hide random name button since user doesn't want it
+  randomNameBtn.style.display = 'none';
 
 // Color selection
 colorOptions[0].classList.add('selected'); // Select first color by default

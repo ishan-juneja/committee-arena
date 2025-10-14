@@ -302,10 +302,11 @@ export default class GameScene extends Phaser.Scene {
   createPlayerSprite(player, sessionId) {
     console.log(`➕ Creating sprite: ${player.name} at (${player.x}, ${player.y})`);
     
-    // Use color from server (synced across all clients)
+    // Use color from server state (synced across all clients)
+    // This ensures everyone sees the same color for each player
     const color = player.color || 0xffffff;
     
-    console.log(`🔍 Creating sprite for ${player.name} at (${player.x}, ${player.y}) with color ${color.toString(16)}`);
+    console.log(`🔍 Creating sprite for ${player.name} at (${player.x}, ${player.y}) with color 0x${color.toString(16)}`);
     
     // Create player sprite
     const playerSprite = new PlayerSprite(
@@ -570,12 +571,6 @@ export default class GameScene extends Phaser.Scene {
       { fontSize: "48px", color: "#FFD700", fontStyle: "bold" }
     ).setOrigin(0.5).setDepth(4001);
     
-    const committee = COMMITTEES[data.committee] || { emoji: "💀" };
-    const committeeText = this.add.text(
-      400, 390, `${committee.emoji} ${data.committee}`,
-      { fontSize: "24px", color: "#ffffff" }
-    ).setOrigin(0.5).setDepth(4001);
-    
     // Pulse animation
     this.tweens.add({
       targets: trophy,
@@ -589,14 +584,14 @@ export default class GameScene extends Phaser.Scene {
     // If it's you, show special message
     if (data.id === this.mySessionId) {
       const youWonText = this.add.text(
-        400, 450, "YOU ARE THE CHAMPION!",
+        400, 390, "YOU ARE THE CHAMPION!",
         { fontSize: "20px", color: "#FFD700", fontStyle: "italic" }
       ).setOrigin(0.5).setDepth(4001);
     }
   }
 
   /**
-   * Adds a reset button (visible to all, but mainly for game master)
+   * Adds a reset button (visible to all, resets server state)
    */
   addResetButton() {
     const resetBtn = this.add.text(
@@ -612,7 +607,17 @@ export default class GameScene extends Phaser.Scene {
     
     resetBtn.on('pointerdown', () => {
       console.log("🔄 Resetting game...");
-      window.location.reload();
+      
+      // Clear saved session
+      localStorage.removeItem('arenaSession');
+      
+      // Send reset to server to reset all player states
+      this.network.sendReset();
+      
+      // Reload page after short delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     });
     
     resetBtn.on('pointerover', () => {

@@ -115,6 +115,22 @@ export class ArenaRoom extends Room<ArenaState> {
         if (attacker) attacker.attacking = false;
       }, ATTACK_DURATION_MS);
     });
+    
+    // Handle reset message
+    this.onMessage("reset", (client) => {
+      console.log(`🔄 Reset requested by ${client.sessionId}`);
+      // Reset all players to full health and respawn
+      let playerIndex = 0;
+      for (const [sessionId, player] of this.state.players.entries()) {
+        player.hp = 3;
+        const spawnPos = this.getSpawnPosition(playerIndex);
+        player.x = spawnPos.x;
+        player.y = spawnPos.y;
+        player.attacking = false;
+        playerIndex++;
+      }
+      console.log(`✅ All ${this.state.players.size} players reset`);
+    });
   }
 
   /**
