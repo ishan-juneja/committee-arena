@@ -15,7 +15,8 @@ const path_1 = __importDefault(require("path"));
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 2567;
 // Serve static files from client directory
-app.use(express_1.default.static(path_1.default.join(__dirname, "../client")));
+// When compiled to dist/server/index.js, we need to go up two levels to reach client/
+app.use(express_1.default.static(path_1.default.join(__dirname, "../../client")));
 // Create HTTP server
 const httpServer = (0, http_1.createServer)(app);
 // Create Colyseus game server

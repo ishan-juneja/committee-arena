@@ -13,7 +13,8 @@ const app = express();
 const PORT = process.env.PORT || 2567;
 
 // Serve static files from client directory
-app.use(express.static(path.join(__dirname, "../client")));
+// When compiled to dist/server/index.js, we need to go up two levels to reach client/
+app.use(express.static(path.join(__dirname, "../../client")));
 
 // Create HTTP server
 const httpServer = createServer(app);
