@@ -77,6 +77,9 @@ export default class GameScene extends Phaser.Scene {
     this.networkUpdateInterval = 50; // Send updates every 50ms (20 times/sec) instead of 60fps
     this.keys = null; // Keyboard controls
     this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    this.lastMovementDirection = { x: 0, y: 1 }; // Default facing down
+    this.lastAutoAttack = 0;
+    this.autoAttackInterval = 500; // Auto-attack every 500ms when moving
   }
 
   /**
@@ -160,10 +163,10 @@ export default class GameScene extends Phaser.Scene {
       // Create UI controls (only on mobile devices)
       if (this.isMobile) {
         this.joystick = new Joystick(this);
-        this.attackBtn = new AttackButton(this, () => this.network.sendAttack());
+        // No attack button - auto-attack when moving
       } else {
         // Show keyboard controls hint for desktop
-        const hint = this.add.text(400, 560, "WASD: Move | SPACE: Attack", {
+        const hint = this.add.text(400, 560, "WASD: Move (Auto-attack while moving)", {
           fontSize: "14px",
           color: "#ffffff",
           backgroundColor: "#000000",
@@ -403,11 +406,16 @@ export default class GameScene extends Phaser.Scene {
         vec.x /= magnitude;
         vec.y /= magnitude;
       }
+    }
+    
+    // Update movement direction if player is moving
+    if (vec.x !== 0 || vec.y !== 0) {
+      this.lastMovementDirection = { x: vec.x, y: vec.y };
       
-      // Handle spacebar attack with cooldown
-      if (this.keys.SPACE.isDown && time - this.lastSpacePress > 500) {
+      // Auto-attack while moving
+      if (time - this.lastAutoAttack > this.autoAttackInterval) {
         this.network.sendAttack();
-        this.lastSpacePress = time;
+        this.lastAutoAttack = time;
       }
     }
     

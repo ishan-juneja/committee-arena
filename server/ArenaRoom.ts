@@ -107,15 +107,34 @@ export class ArenaRoom extends Room<ArenaState> {
    * Called when a new player connects.
    * Creates a new PlayerState and adds it to the game.
    */
+  /**
+   * Get evenly distributed spawn position for new player
+   */
+  private getSpawnPosition(playerIndex: number): { x: number, y: number } {
+    // Spawn positions in a circle around the center
+    const centerX = 400;
+    const centerY = 300;
+    const radius = 120; // Distance from center
+    
+    const angle = (playerIndex / 12) * Math.PI * 2; // Divide circle into 12 sections
+    
+    return {
+      x: centerX + Math.cos(angle) * radius,
+      y: centerY + Math.sin(angle) * radius
+    };
+  }
+
   onJoin(client: Client, options: any) {
     const player = new PlayerState();
     player.id = client.sessionId;
     player.name = options.name || "Guest";
     player.committee = options.committee || "Leadership Events Directors";
     
-    // Spawn player at random position
-    player.x = Math.random() * (SPAWN_X_MAX - SPAWN_X_MIN) + SPAWN_X_MIN;
-    player.y = Math.random() * (SPAWN_Y_MAX - SPAWN_Y_MIN) + SPAWN_Y_MIN;
+    // Spawn player at evenly distributed position
+    const playerIndex = this.state.players.size;
+    const spawnPos = this.getSpawnPosition(playerIndex);
+    player.x = spawnPos.x;
+    player.y = spawnPos.y;
     player.hp = 3;
     
     // Add player to game state
