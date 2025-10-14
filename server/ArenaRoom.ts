@@ -31,9 +31,6 @@ export class ArenaRoom extends Room<ArenaState> {
    */
   onCreate() {
     this.setState(new ArenaState());
-    
-    // Enable reconnection - players can rejoin within 60 seconds
-    this.allowReconnection(60);
 
     // Handle player movement messages
     // Clients send { dx, dy } to move their character
