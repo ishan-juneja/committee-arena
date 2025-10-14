@@ -541,19 +541,14 @@ export default class GameScene extends Phaser.Scene {
         { fontSize: "32px", color: "#ff0000", fontStyle: "bold" }
       ).setOrigin(0.5).setDepth(2001);
       
-      const committeeText = this.add.text(
-        400, 400, `You were: ${data.committee}`,
-        { fontSize: "20px", color: "#ffffff" }
-      ).setOrigin(0.5).setDepth(2001);
-      
       const killerText = this.add.text(
-        400, 440, `Defeated by ${data.killerName}`,
+        400, 410, `Defeated by ${data.killerName}`,
         { fontSize: "18px", color: "#ff9999" }
       ).setOrigin(0.5).setDepth(2001);
       
       // Keep your death screen for 5 seconds before fading
       this.tweens.add({
-        targets: [overlay, emojiText, youDiedText, committeeText, killerText],
+        targets: [overlay, emojiText, youDiedText, killerText],
         alpha: 0,
         duration: 2000,
         delay: 5000,
@@ -561,7 +556,6 @@ export default class GameScene extends Phaser.Scene {
           overlay.destroy();
           emojiText.destroy();
           youDiedText.destroy();
-          committeeText.destroy();
           killerText.destroy();
         }
       });
