@@ -75,6 +75,8 @@ export default class GameScene extends Phaser.Scene {
     super({ key: "GameScene" });
     this.lastNetworkUpdate = 0;
     this.networkUpdateInterval = 50; // Send updates every 50ms (20 times/sec) instead of 60fps
+    this.keys = null; // Keyboard controls
+    this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   }
 
   /**
@@ -85,26 +87,41 @@ export default class GameScene extends Phaser.Scene {
   async create() {
     console.log("🎮 Game Scene Created");
     
-    // Add background grid for visual reference
+    // Add improved background
     this.createBackground();
     
-    // Add title
-    this.add.text(400, 20, "⚔️ COMMITTEE ARENA ⚔️", {
-      fontSize: "24px",
+    // Add title with shadow
+    const title = this.add.text(400, 20, "⚔️ COMMITTEE ARENA ⚔️", {
+      fontSize: "28px",
       color: "#ffffff",
       fontStyle: "bold",
-    }).setOrigin(0.5);
+      stroke: "#000000",
+      strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(100);
+    
+    // Add pulsing effect to title
+    this.tweens.add({
+      targets: title,
+      scale: 1.05,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
     
     // Initialize network
     this.network = new Network();
     
-    // Ask player for their name
-    const playerName = this.promptPlayerName();
+    // Get player name from game registry (set by main.js)
+    const playerName = this.game.registry.get('playerName') || 'Guest' + Math.floor(Math.random() * 1000);
     
     // Determine committee based on name
     const playerCommittee = getCommitteeFromName(playerName);
     
     console.log(`🎯 You are: ${playerName} from ${playerCommittee}`);
+    
+    // Setup keyboard controls (WASD + Space)
+    this.setupKeyboardControls();
     
     try {
       // Join the arena room
@@ -114,9 +131,19 @@ export default class GameScene extends Phaser.Scene {
       this.players = {};
       this.mySessionId = this.room.sessionId;
       
-      // Create UI controls
-      this.joystick = new Joystick(this);
-      this.attackBtn = new AttackButton(this, () => this.network.sendAttack());
+      // Create UI controls (only on mobile devices)
+      if (this.isMobile) {
+        this.joystick = new Joystick(this);
+        this.attackBtn = new AttackButton(this, () => this.network.sendAttack());
+      } else {
+        // Show keyboard controls hint for desktop
+        const hint = this.add.text(400, 560, "WASD: Move | SPACE: Attack", {
+          fontSize: "14px",
+          color: "#ffffff",
+          backgroundColor: "#000000",
+          padding: { x: 10, y: 5 }
+        }).setOrigin(0.5).setDepth(100).setAlpha(0.7);
+      }
       
       // Set up server state listeners
       this.setupStateListeners();
@@ -134,25 +161,38 @@ export default class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Prompts the player for their name
-   * @returns {string} Player's chosen name
+   * Sets up keyboard controls (WASD + Space)
    */
-  promptPlayerName() {
-    let name = prompt("Enter your name:");
-    if (!name || name.trim() === "") {
-      name = "Guest" + Math.floor(Math.random() * 1000);
-    }
-    return name.trim();
+  setupKeyboardControls() {
+    // Create keyboard input
+    this.keys = {
+      W: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+      A: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+      S: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+      D: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
+      SPACE: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
+    };
+    
+    // Prevent space from scrolling page
+    this.input.keyboard.addCapture('W,A,S,D,SPACE');
+    
+    // Track if space was just pressed (for attack cooldown)
+    this.lastSpacePress = 0;
   }
 
   /**
-   * Creates a background grid pattern
+   * Creates an improved background with grid and visual effects
    */
   createBackground() {
-    const graphics = this.add.graphics();
-    graphics.lineStyle(1, 0x1a2332, 0.5);
+    // Add subtle gradient rectangles for depth
+    const bg1 = this.add.rectangle(200, 150, 400, 300, 0x1a2332, 0.3);
+    const bg2 = this.add.rectangle(600, 450, 400, 300, 0x2a3342, 0.3);
     
-    // Vertical lines
+    // Create grid with better styling
+    const graphics = this.add.graphics();
+    graphics.lineStyle(1, 0x2a3342, 0.8);
+    
+    // Vertical lines with gradient effect
     for (let x = 0; x <= 800; x += 50) {
       graphics.lineBetween(x, 0, x, 600);
     }
@@ -161,6 +201,20 @@ export default class GameScene extends Phaser.Scene {
     for (let y = 0; y <= 600; y += 50) {
       graphics.lineBetween(0, y, 800, y);
     }
+    
+    // Add corner decorations
+    graphics.lineStyle(2, 0x667eea, 0.6);
+    graphics.strokeRect(5, 5, 790, 590);
+    graphics.strokeRect(10, 10, 780, 580);
+    
+    // Add center arena marker
+    graphics.lineStyle(1, 0x667eea, 0.4);
+    graphics.strokeCircle(400, 300, 100);
+    graphics.strokeCircle(400, 300, 150);
+    
+    // Add subtle glow effect to center
+    graphics.fillStyle(0x667eea, 0.05);
+    graphics.fillCircle(400, 300, 150);
   }
 
   /**
@@ -223,10 +277,10 @@ export default class GameScene extends Phaser.Scene {
   /**
    * update
    * Called every frame.
-   * Handles smooth interpolation and throttled network updates.
+   * Handles smooth interpolation, keyboard/joystick input, and throttled network updates.
    */
   update(time) {
-    if (!this.joystick || !this.network) return;
+    if (!this.network) return;
     
     // Smooth interpolation for all players (prevents choppy movement)
     for (const id in this.players) {
@@ -236,11 +290,37 @@ export default class GameScene extends Phaser.Scene {
       }
     }
     
+    // Get movement vector from keyboard or joystick
+    let vec = { x: 0, y: 0 };
+    
+    if (this.isMobile && this.joystick) {
+      // Mobile: use joystick
+      vec = this.joystick.getVector();
+    } else if (this.keys) {
+      // Desktop: use WASD keys
+      if (this.keys.W.isDown) vec.y = -1;
+      if (this.keys.S.isDown) vec.y = 1;
+      if (this.keys.A.isDown) vec.x = -1;
+      if (this.keys.D.isDown) vec.x = 1;
+      
+      // Normalize diagonal movement
+      if (vec.x !== 0 && vec.y !== 0) {
+        const magnitude = Math.sqrt(vec.x * vec.x + vec.y * vec.y);
+        vec.x /= magnitude;
+        vec.y /= magnitude;
+      }
+      
+      // Handle spacebar attack with cooldown
+      if (this.keys.SPACE.isDown && time - this.lastSpacePress > 500) {
+        this.network.sendAttack();
+        this.lastSpacePress = time;
+      }
+    }
+    
     // Throttle network updates to prevent excessive traffic
     // Only send position updates every 50ms instead of every frame (60fps)
     // This allows 8-12 players to play smoothly without network congestion
     if (time - this.lastNetworkUpdate > this.networkUpdateInterval) {
-      const vec = this.joystick.getVector();
       this.network.sendMove(vec);
       this.lastNetworkUpdate = time;
     }

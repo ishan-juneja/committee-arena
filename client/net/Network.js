@@ -10,6 +10,12 @@ export default class Network {
    * Connects to the Colyseus server (defaults to same host as web page)
    */
   constructor() {
+    // Check if Colyseus is loaded
+    if (typeof window.Colyseus === 'undefined') {
+      console.error('❌ Colyseus library not loaded!');
+      throw new Error('Colyseus library not loaded. Please check your internet connection.');
+    }
+    
     // Determine server URL based on current location
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.hostname;
@@ -18,8 +24,8 @@ export default class Network {
     
     console.log(`🌐 Connecting to server: ${serverUrl}`);
     
-    // Create Colyseus client
-    this.client = new Colyseus.Client(serverUrl);
+    // Create Colyseus client using the global Colyseus object
+    this.client = new window.Colyseus.Client(serverUrl);
     this.room = null;
   }
 
