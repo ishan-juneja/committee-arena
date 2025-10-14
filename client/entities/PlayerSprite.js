@@ -140,8 +140,8 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
       ease: "Power2",
     });
     
-    // Show punch radius indicator (50 pixel radius from server)
-    const punchRadius = this.scene.add.circle(0, 0, 50, 0xff0000, 0);
+    // Show punch radius indicator (33 pixel radius - reduced by 1/3)
+    const punchRadius = this.scene.add.circle(0, 0, 33, 0xff0000, 0);
     punchRadius.setStrokeStyle(3, 0xff0000, 0.8);
     this.add(punchRadius);
     

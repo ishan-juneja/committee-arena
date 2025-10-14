@@ -3,7 +3,7 @@ import { ArenaState } from "./schema/ArenaState";
 import { PlayerState } from "./schema/PlayerState";
 
 // Constants for game mechanics
-const PUNCH_RADIUS = 50;
+const PUNCH_RADIUS = 33; // Reduced by 1/3 from 50
 const ATTACK_DURATION_MS = 300;
 const ATTACK_COOLDOWN_MS = 500; // Prevent spam attacks (0.5 second cooldown)
 const SPAWN_X_MIN = 100;
@@ -103,6 +103,9 @@ export class ArenaRoom extends Room<ArenaState> {
               committee: target.committee,
               killerName: attacker.name,
             });
+            
+            // Check if there's a winner after death
+            this.checkForWinner();
           }
         }
       }
@@ -141,6 +144,7 @@ export class ArenaRoom extends Room<ArenaState> {
     player.id = client.sessionId;
     player.name = options.name || "Guest";
     player.committee = options.committee || "Leadership Events Directors";
+    player.color = options.color || 0xffffff; // Sync color from client
     
     // Spawn player at evenly distributed position
     const playerIndex = this.state.players.size;
@@ -152,8 +156,28 @@ export class ArenaRoom extends Room<ArenaState> {
     // Add player to game state
     this.state.players.set(client.sessionId, player);
     
-    console.log(`✅ ${player.name} joined as ${player.committee} at position (${player.x.toFixed(1)}, ${player.y.toFixed(1)})`);
+    console.log(`✅ ${player.name} joined as ${player.committee} at position (${player.x.toFixed(1)}, ${player.y.toFixed(1)}) with color 0x${player.color.toString(16)}`);
     console.log(`📊 Total players in room: ${this.state.players.size}`);
+    
+    // Check for winner (only 1 player left alive)
+    this.checkForWinner();
+  }
+
+  /**
+   * Check if there's a winner (only 1 player alive)
+   */
+  private checkForWinner() {
+    const alivePlayers = Array.from(this.state.players.values()).filter(p => p.hp > 0);
+    
+    if (alivePlayers.length === 1 && this.state.players.size > 1) {
+      const winner = alivePlayers[0];
+      console.log(`🏆 ${winner.name} wins!`);
+      this.broadcast("winner", {
+        id: winner.id,
+        name: winner.name,
+        committee: winner.committee,
+      });
+    }
   }
 
   /**
@@ -168,6 +192,9 @@ export class ArenaRoom extends Room<ArenaState> {
     }
     this.state.players.delete(client.sessionId);
     this.lastAttackTime.delete(client.sessionId); // Clean up attack cooldown tracking
+    
+    // Check for winner after player leaves
+    this.checkForWinner();
   }
 }
 

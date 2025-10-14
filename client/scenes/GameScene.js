@@ -132,8 +132,8 @@ export default class GameScene extends Phaser.Scene {
       // Store player sprites by ID
       this.players = {};
       
-      // Join the arena room
-      this.room = await this.network.join(playerName, playerCommittee);
+      // Join the arena room (send color to server for sync)
+      this.room = await this.network.join(playerName, playerCommittee, playerColor);
       this.mySessionId = this.room.sessionId;
       
       console.log(`🔗 Connected! Session ID: ${this.mySessionId}`);
@@ -174,8 +174,14 @@ export default class GameScene extends Phaser.Scene {
       // Set up death event listener
       this.room.onMessage("death", (data) => this.showDeathScreen(data));
       
+      // Set up winner event listener
+      this.room.onMessage("winner", (data) => this.showWinnerScreen(data));
+      
       // Setup keyboard controls AFTER everything else is ready
       this.setupKeyboardControls();
+      
+      // Add reset button (only for first player - check if you're the only one or first to join)
+      this.addResetButton();
       
       console.log("🎮 Game fully initialized and ready!");
       
@@ -477,27 +483,19 @@ export default class GameScene extends Phaser.Scene {
     const deadSprite = this.players[data.id];
     
     if (deadSprite) {
-      // Create large emoji above the dead player
+      // Create small emoji (same size as player - 24px diameter = player size)
       const emojiOverlay = this.add.text(
         deadSprite.x, 
         deadSprite.y, 
         emoji, 
-        { fontSize: "64px" }
+        { fontSize: "20px" } // Small size, same as player
       ).setOrigin(0.5).setDepth(3000);
       
-      // Create committee name below emoji
-      const committeeName = this.add.text(
-        deadSprite.x,
-        deadSprite.y + 50,
-        data.committee,
-        { fontSize: "16px", color: "#ffffff", fontStyle: "bold", stroke: "#000000", strokeThickness: 3 }
-      ).setOrigin(0.5).setDepth(3000);
-      
-      // Pulse animation for emoji
+      // Gentle pulse animation
       this.tweens.add({
         targets: emojiOverlay,
-        scale: 1.2,
-        duration: 500,
+        scale: 1.1,
+        duration: 600,
         yoyo: true,
         repeat: -1,
         ease: "Sine.easeInOut"
@@ -505,13 +503,12 @@ export default class GameScene extends Phaser.Scene {
       
       // Keep emoji visible for 7 seconds, then fade out
       this.tweens.add({
-        targets: [emojiOverlay, committeeName],
+        targets: emojiOverlay,
         alpha: 0,
         duration: 2000,
         delay: 7000, // Show for 7 seconds
         onComplete: () => {
           emojiOverlay.destroy();
-          committeeName.destroy();
         }
       });
     }
@@ -557,6 +554,81 @@ export default class GameScene extends Phaser.Scene {
         }
       });
     }
+  }
+
+  /**
+   * Shows winner screen when only 1 player is left alive
+   */
+  showWinnerScreen(data) {
+    console.log(`🏆 ${data.name} wins!`);
+    
+    // Full-screen winner overlay
+    const overlay = this.add.rectangle(
+      400, 300, 800, 600, 0x000000, 0.8
+    ).setDepth(4000);
+    
+    const trophy = this.add.text(
+      400, 200, "🏆", 
+      { fontSize: "100px" }
+    ).setOrigin(0.5).setDepth(4001);
+    
+    const winnerText = this.add.text(
+      400, 320, `${data.name} WINS!`,
+      { fontSize: "48px", color: "#FFD700", fontStyle: "bold" }
+    ).setOrigin(0.5).setDepth(4001);
+    
+    const committee = COMMITTEES[data.committee] || { emoji: "💀" };
+    const committeeText = this.add.text(
+      400, 390, `${committee.emoji} ${data.committee}`,
+      { fontSize: "24px", color: "#ffffff" }
+    ).setOrigin(0.5).setDepth(4001);
+    
+    // Pulse animation
+    this.tweens.add({
+      targets: trophy,
+      scale: 1.2,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut"
+    });
+    
+    // If it's you, show special message
+    if (data.id === this.mySessionId) {
+      const youWonText = this.add.text(
+        400, 450, "YOU ARE THE CHAMPION!",
+        { fontSize: "20px", color: "#FFD700", fontStyle: "italic" }
+      ).setOrigin(0.5).setDepth(4001);
+    }
+  }
+
+  /**
+   * Adds a reset button (visible to all, but mainly for game master)
+   */
+  addResetButton() {
+    const resetBtn = this.add.text(
+      750, 20, "🔄 Reset",
+      { 
+        fontSize: "16px", 
+        color: "#ffffff",
+        backgroundColor: "#ff4444",
+        padding: { x: 10, y: 5 },
+        borderRadius: 5
+      }
+    ).setOrigin(1, 0).setDepth(5000).setInteractive();
+    
+    resetBtn.on('pointerdown', () => {
+      console.log("🔄 Resetting game...");
+      window.location.reload();
+    });
+    
+    resetBtn.on('pointerover', () => {
+      resetBtn.setStyle({ backgroundColor: "#ff6666" });
+    });
+    
+    resetBtn.on('pointerout', () => {
+      resetBtn.setStyle({ backgroundColor: "#ff4444" });
+    });
   }
 
   /**
