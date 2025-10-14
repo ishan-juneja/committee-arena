@@ -57,7 +57,6 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
    * @param {number} y - New y coordinate
    */
   updatePosition(x, y) {
-    console.log(`🎯 ${this.playerName} updatePosition called: (${x.toFixed(1)}, ${y.toFixed(1)})`);
     this.targetX = x;
     this.targetY = y;
   }
@@ -67,18 +66,9 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
    * Prevents choppy movement when network updates are throttled
    */
   smoothUpdate() {
-    const oldX = this.x;
-    const oldY = this.y;
-    
     // Linear interpolation for smooth movement
     this.x += (this.targetX - this.x) * this.lerpSpeed;
     this.y += (this.targetY - this.y) * this.lerpSpeed;
-    
-    // Log only if there was actual movement
-    const moved = Math.abs(this.x - oldX) > 0.1 || Math.abs(this.y - oldY) > 0.1;
-    if (moved) {
-      console.log(`🚶 ${this.playerName} smoothUpdate: (${this.x.toFixed(1)}, ${this.y.toFixed(1)})`);
-    }
   }
 
   /**
@@ -103,19 +93,22 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
   }
   
   /**
-   * Fades out the player sprite when they die
+   * Fades out the player sprite when they die (after emoji is shown)
    */
   fadeOutOnDeath() {
-    this.scene.tweens.add({
-      targets: this,
-      alpha: 0,
-      scale: 0.5,
-      duration: 1000,
-      ease: "Power2",
-      onComplete: () => {
-        // Keep invisible but don't destroy (state sync handles removal)
-        this.visible = false;
-      }
+    // Wait 7 seconds for emoji to display, then fade out
+    this.scene.time.delayedCall(7000, () => {
+      this.scene.tweens.add({
+        targets: this,
+        alpha: 0,
+        scale: 0.5,
+        duration: 2000,
+        ease: "Power2",
+        onComplete: () => {
+          // Keep invisible but don't destroy (state sync handles removal)
+          this.visible = false;
+        }
+      });
     });
   }
 

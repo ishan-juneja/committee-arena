@@ -347,27 +347,24 @@ export default class GameScene extends Phaser.Scene {
     
     // Listen for changes to this specific player using Colyseus Schema .listen()
     player.listen("x", (currentValue, previousValue) => {
-      console.log(`🔄 ${player.name} X changed: ${previousValue} → ${currentValue}`);
       const sprite = this.players[sessionId];
       if (sprite) sprite.updatePosition(player.x, player.y);
     });
     
     player.listen("y", (currentValue, previousValue) => {
-      console.log(`🔄 ${player.name} Y changed: ${previousValue} → ${currentValue}`);
       const sprite = this.players[sessionId];
       if (sprite) sprite.updatePosition(player.x, player.y);
     });
     
     player.listen("hp", (currentValue, previousValue) => {
-      console.log(`💔 ${player.name} HP: ${previousValue} → ${currentValue}`);
       const sprite = this.players[sessionId];
       if (sprite) sprite.updateHP(currentValue);
     });
     
     player.listen("attacking", (currentValue, previousValue) => {
-      console.log(`👊 ${player.name} attacking: ${previousValue} → ${currentValue}`);
       const sprite = this.players[sessionId];
       if (sprite && currentValue === true) {
+        console.log(`💥 ${player.name} attacking!`);
         sprite.showAttacking();
       }
     });
@@ -461,9 +458,6 @@ export default class GameScene extends Phaser.Scene {
     // Only send position updates every 50ms instead of every frame (60fps)
     // This allows 8-12 players to play smoothly without network congestion
     if (time - this.lastNetworkUpdate > this.networkUpdateInterval) {
-      if (vec.x !== 0 || vec.y !== 0) {
-        console.log(`📤 Move: dx=${(vec.x * 3).toFixed(1)}, dy=${(vec.y * 3).toFixed(1)}`);
-      }
       this.network.sendMove(vec);
       this.lastNetworkUpdate = time;
     }
