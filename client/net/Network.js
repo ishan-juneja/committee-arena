@@ -19,8 +19,15 @@ export default class Network {
     // Determine server URL based on current location
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.hostname;
-    const port = window.location.port || "2567";
-    const serverUrl = `${protocol}//${host}:${port}`;
+    
+    // For production (Vercel/Render), use the same host without port
+    // For local development, use port 2567
+    let serverUrl;
+    if (host === "localhost" || host === "127.0.0.1") {
+      serverUrl = `${protocol}//${host}:2567`;
+    } else {
+      serverUrl = `${protocol}//${host}`;
+    }
     
     console.log(`🌐 Connecting to server: ${serverUrl}`);
     
@@ -99,6 +106,16 @@ export default class Network {
     
     this.room.send("attack");
     console.log("👊 Attack!");
+  }
+
+  /**
+   * Sends a reset game action to the server
+   */
+  sendReset() {
+    if (this.room) {
+      this.room.send("reset");
+      console.log("🔄 Reset requested");
+    }
   }
 
   /**

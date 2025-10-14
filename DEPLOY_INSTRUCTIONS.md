@@ -62,7 +62,7 @@ git remote add origin https://github.com/johndoe/committee-arena.git
 
 **Build Command**:
 ```
-npm install
+npm install && npm run build
 ```
 
 **Start Command**:

@@ -4,7 +4,7 @@
   "description": "2D Multiplayer Arena Game with Colyseus + Phaser 3",
   "main": "server/index.ts",
   "scripts": {
-    "start": "ts-node server/index.ts",
+    "start": "node dist/server/index.js",
     "dev": "ts-node server/index.ts",
     "build": "tsc"
   },
