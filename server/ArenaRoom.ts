@@ -5,6 +5,7 @@ import { PlayerState } from "./schema/PlayerState";
 // Constants for game mechanics
 const PUNCH_RADIUS = 50;
 const ATTACK_DURATION_MS = 300;
+const ATTACK_COOLDOWN_MS = 500; // Prevent spam attacks (0.5 second cooldown)
 const SPAWN_X_MIN = 100;
 const SPAWN_X_MAX = 700;
 const SPAWN_Y_MIN = 100;
@@ -19,6 +20,9 @@ const SPAWN_Y_MAX = 500;
  * - Broadcasting death events
  */
 export class ArenaRoom extends Room<ArenaState> {
+  
+  // Track last attack time for each player (prevents spam)
+  private lastAttackTime: Map<string, number> = new Map();
   
   /**
    * onCreate
@@ -48,6 +52,17 @@ export class ArenaRoom extends Room<ArenaState> {
     this.onMessage("attack", (client) => {
       const attacker = this.state.players.get(client.sessionId);
       if (!attacker || attacker.hp <= 0) return;
+      
+      // Check attack cooldown to prevent spam
+      const now = Date.now();
+      const lastAttack = this.lastAttackTime.get(client.sessionId) || 0;
+      if (now - lastAttack < ATTACK_COOLDOWN_MS) {
+        // Still on cooldown, ignore attack
+        return;
+      }
+      
+      // Update last attack time
+      this.lastAttackTime.set(client.sessionId, now);
 
       // Set attacking flag (useful for animations on client)
       attacker.attacking = true;
@@ -120,6 +135,7 @@ export class ArenaRoom extends Room<ArenaState> {
       console.log(`👋 ${player.name} left the game`);
     }
     this.state.players.delete(client.sessionId);
+    this.lastAttackTime.delete(client.sessionId); // Clean up attack cooldown tracking
   }
 }
 

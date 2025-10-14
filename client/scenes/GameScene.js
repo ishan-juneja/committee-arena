@@ -14,14 +14,67 @@ import AttackButton from "../ui/AttackButton.js";
 
 // Committee definitions with emojis
 const COMMITTEES = {
-  "Coffee Chats": { emoji: "☕", color: 0x8B4513 },
-  "Professional Development": { emoji: "💼", color: 0x4169E1 },
-  "IWAB": { emoji: "👩‍💼", color: 0x9370DB },
+  "Leadership Events Directors": { emoji: "🏆", color: 0xFFD700 },
+  "Interview With A Bruin (IWAB)": { emoji: "🎙", color: 0x4169E1 },
+  "Coffee Chat Directors": { emoji: "☕", color: 0x8B4513 },
+  "⭐ Associate Director": { emoji: "⭐", color: 0xFF69B4 },
 };
+
+/**
+ * Determines committee based on player name
+ * Uses 3-letter then 2-letter mapping for specific players
+ * @param {string} name - Player's name
+ * @returns {string} Committee name
+ */
+function getCommitteeFromName(name) {
+  const clean = name.trim().toUpperCase();
+  
+  // 3-letter specific mapping (highest priority)
+  const p3 = clean.slice(0, 3);
+  const map3 = {
+    "ETH": "Leadership Events Directors", // Ethan
+    "HAI": "Leadership Events Directors", // Hailey
+    "SAR": "Leadership Events Directors", // Sarah
+    "MAN": "Interview With A Bruin (IWAB)", // Manuela
+    "ELI": "Interview With A Bruin (IWAB)", // Elizabeth
+    "YAN": "Interview With A Bruin (IWAB)", // Yangyang
+    "KAT": "Coffee Chat Directors", // Katie
+    "MEI": "Coffee Chat Directors", // Mei
+    "ARI": "⭐ Associate Director", // Arielle (AD)
+  };
+  
+  if (map3[p3]) return map3[p3];
+
+  // 2-letter general mapping
+  const p2 = clean.slice(0, 2);
+  const map2 = {
+    "ET": "Leadership Events Directors",
+    "HA": "Leadership Events Directors",
+    "SA": "Leadership Events Directors",
+    "MA": "Interview With A Bruin (IWAB)",
+    "EL": "Interview With A Bruin (IWAB)",
+    "YA": "Interview With A Bruin (IWAB)",
+    "KA": "Coffee Chat Directors",
+    "ME": "Coffee Chat Directors",
+    "AR": "⭐ Associate Director",
+  };
+  
+  if (map2[p2]) return map2[p2];
+  
+  // Default: randomly assign to prevent collision
+  const committees = [
+    "Leadership Events Directors",
+    "Interview With A Bruin (IWAB)",
+    "Coffee Chat Directors"
+  ];
+  return committees[Math.floor(Math.random() * committees.length)];
+}
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super({ key: "GameScene" });
+    this.lastNetworkUpdate = 0;
+    this.networkUpdateInterval = 50; // Send updates every 50ms (20 times/sec) instead of 60fps
   }
 
   /**
@@ -48,15 +101,14 @@ export default class GameScene extends Phaser.Scene {
     // Ask player for their name
     const playerName = this.promptPlayerName();
     
-    // Randomly assign a committee
-    const committeeNames = Object.keys(COMMITTEES);
-    const randomCommittee = committeeNames[Math.floor(Math.random() * committeeNames.length)];
+    // Determine committee based on name
+    const playerCommittee = getCommitteeFromName(playerName);
     
-    console.log(`🎯 You are: ${playerName} from ${randomCommittee}`);
+    console.log(`🎯 You are: ${playerName} from ${playerCommittee}`);
     
     try {
       // Join the arena room
-      this.room = await this.network.join(playerName, randomCommittee);
+      this.room = await this.network.join(playerName, playerCommittee);
       
       // Store player sprites by ID
       this.players = {};
@@ -171,14 +223,27 @@ export default class GameScene extends Phaser.Scene {
   /**
    * update
    * Called every frame.
-   * Sends movement updates to the server.
+   * Handles smooth interpolation and throttled network updates.
    */
-  update() {
+  update(time) {
     if (!this.joystick || !this.network) return;
     
-    // Get joystick input and send to server
-    const vec = this.joystick.getVector();
-    this.network.sendMove(vec);
+    // Smooth interpolation for all players (prevents choppy movement)
+    for (const id in this.players) {
+      const sprite = this.players[id];
+      if (sprite && sprite.smoothUpdate) {
+        sprite.smoothUpdate();
+      }
+    }
+    
+    // Throttle network updates to prevent excessive traffic
+    // Only send position updates every 50ms instead of every frame (60fps)
+    // This allows 8-12 players to play smoothly without network congestion
+    if (time - this.lastNetworkUpdate > this.networkUpdateInterval) {
+      const vec = this.joystick.getVector();
+      this.network.sendMove(vec);
+      this.lastNetworkUpdate = time;
+    }
   }
 
   /**

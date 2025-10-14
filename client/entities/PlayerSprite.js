@@ -20,6 +20,11 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
     this.hp = 3;
     this.playerName = name;
     this.baseColor = color;
+    
+    // Smooth interpolation targets for non-choppy movement
+    this.targetX = 0;
+    this.targetY = 0;
+    this.lerpSpeed = 0.3; // Interpolation speed (0-1, higher = faster)
 
     // Create the player body (circle)
     this.body = scene.add.circle(0, 0, 20, color);
@@ -46,13 +51,23 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
   }
 
   /**
-   * Updates the player's position on screen
+   * Sets the target position for smooth interpolation
    * @param {number} x - New x coordinate
    * @param {number} y - New y coordinate
    */
   updatePosition(x, y) {
-    this.x = x;
-    this.y = y;
+    this.targetX = x;
+    this.targetY = y;
+  }
+  
+  /**
+   * Smoothly interpolates to target position (call every frame)
+   * Prevents choppy movement when network updates are throttled
+   */
+  smoothUpdate() {
+    // Linear interpolation for smooth movement
+    this.x += (this.targetX - this.x) * this.lerpSpeed;
+    this.y += (this.targetY - this.y) * this.lerpSpeed;
   }
 
   /**
@@ -60,14 +75,37 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
    * @param {number} hp - Current health points
    */
   updateHP(hp) {
+    const previousHP = this.hp;
     this.hp = hp;
     const hearts = "❤️".repeat(Math.max(0, hp));
     this.hpText.setText(hearts);
     
     // Flash red when taking damage
-    if (hp > 0 && hp < 3) {
+    if (hp > 0 && hp < 3 && hp < previousHP) {
       this.flash();
     }
+    
+    // Fade out when dead
+    if (hp <= 0 && previousHP > 0) {
+      this.fadeOutOnDeath();
+    }
+  }
+  
+  /**
+   * Fades out the player sprite when they die
+   */
+  fadeOutOnDeath() {
+    this.scene.tweens.add({
+      targets: this,
+      alpha: 0,
+      scale: 0.5,
+      duration: 1000,
+      ease: "Power2",
+      onComplete: () => {
+        // Keep invisible but don't destroy (state sync handles removal)
+        this.visible = false;
+      }
+    });
   }
 
   /**
@@ -84,16 +122,35 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
   }
 
   /**
-   * Shows attack animation
+   * Shows attack animation with visual punch radius
    */
   showAttacking() {
     const originalScale = this.body.scale;
+    
+    // Scale up the body
     this.scene.tweens.add({
       targets: this.body,
       scale: originalScale * 1.3,
       duration: 150,
       yoyo: true,
       ease: "Power2",
+    });
+    
+    // Show punch radius indicator (50 pixel radius from server)
+    const punchRadius = this.scene.add.circle(0, 0, 50, 0xff0000, 0);
+    punchRadius.setStrokeStyle(3, 0xff0000, 0.8);
+    this.add(punchRadius);
+    
+    // Animate the punch radius
+    this.scene.tweens.add({
+      targets: punchRadius,
+      scale: 1.2,
+      alpha: 0,
+      duration: 300,
+      ease: "Power2",
+      onComplete: () => {
+        punchRadius.destroy();
+      }
     });
   }
 }
