@@ -27,13 +27,14 @@ const gameServer = new colyseus_1.Server({
 // Clients will connect to this room using "arena" as the room name
 const roomDefinition = gameServer.define("arena", ArenaRoom_1.ArenaRoom);
 // Note: maxClients is set within ArenaRoom.onCreate() for better control
-// Start listening
-httpServer.listen(PORT, () => {
+// Start listening on 0.0.0.0 (required for Render/Railway deployment)
+const HOST = process.env.HOST || "0.0.0.0";
+httpServer.listen(Number(PORT), HOST, () => {
     console.log("╔═══════════════════════════════════════╗");
     console.log("║   🎮 Committee Arena Server          ║");
     console.log("╚═══════════════════════════════════════╝");
-    console.log(`✅ Colyseus running on ws://localhost:${PORT}`);
-    console.log(`🌐 Client available at http://localhost:${PORT}`);
+    console.log(`✅ Colyseus running on ${HOST}:${PORT}`);
+    console.log(`🌐 Server ready for connections`);
     console.log("");
     console.log("Ready for players to join!");
 });
