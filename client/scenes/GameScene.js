@@ -142,10 +142,19 @@ export default class GameScene extends Phaser.Scene {
       // Set up server state listeners FIRST
       this.setupStateListeners();
       
-      // CRITICAL: Manually create sprites for any players already in the room
-      this.room.state.players.forEach((player, sessionId) => {
-        console.log(`🔄 Found existing player: ${player.name} at (${player.x}, ${player.y})`);
-        this.createPlayerSprite(player, sessionId);
+      // Wait for the first state sync, then create sprites
+      console.log("⏳ Waiting for first state patch...");
+      
+      // Use onStateChange to ensure we have the complete state
+      this.room.onStateChange.once((state) => {
+        console.log("✅ First state received!");
+        console.log(`📊 Players in state: ${state.players.size}`);
+        
+        // Now create sprites for all players
+        state.players.forEach((player, sessionId) => {
+          console.log(`🔄 Creating sprite for player in state: ${player.name}`);
+          this.createPlayerSprite(player, sessionId);
+        });
       });
       
       // Create UI controls (only on mobile devices)
@@ -337,11 +346,15 @@ export default class GameScene extends Phaser.Scene {
    * Handles player additions, removals, and updates
    */
   setupStateListeners() {
+    console.log("🎧 Setting up state listeners...");
+    
     // When a new player joins
     this.room.state.players.onAdd = (player, sessionId) => {
       console.log(`🆕 onAdd triggered for: ${player.name}`);
       this.createPlayerSprite(player, sessionId);
     };
+    
+    console.log("✅ State listeners set up!");
 
     // When a player leaves
     this.room.state.players.onRemove = (player, sessionId) => {
