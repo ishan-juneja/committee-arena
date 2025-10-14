@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Committee Arena - Multiplayer Game</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      overflow: hidden;
+      background: #0b1020;
+      font-family: 'Arial', sans-serif;
+    }
+    #game-container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+  
+  <!-- Load Phaser from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+  
+  <!-- Load Colyseus client from CDN -->
+  <script src="https://unpkg.com/colyseus.js@^0.15.0/dist/colyseus.js"></script>
+  
+  <!-- Load game modules -->
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
+
