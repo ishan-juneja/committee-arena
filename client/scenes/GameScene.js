@@ -471,42 +471,92 @@ export default class GameScene extends Phaser.Scene {
     const committee = COMMITTEES[data.committee] || { emoji: "💀" };
     const emoji = committee.emoji;
     
-    console.log(`💀 ${data.id} died! Committee: ${data.committee}`);
+    console.log(`💀 Player ${data.id} died! Committee: ${data.committee}`);
     
-    // Create overlay background
-    const overlay = this.add.rectangle(
-      400, 300, 800, 600, 0x000000, 0.7
-    ).setDepth(2000);
+    // Get the dead player's sprite to show emoji above them
+    const deadSprite = this.players[data.id];
     
-    // Create emoji and text
-    const emojiText = this.add.text(
-      400, 250, emoji, 
-      { fontSize: "80px" }
-    ).setOrigin(0.5).setDepth(2001);
+    if (deadSprite) {
+      // Create large emoji above the dead player
+      const emojiOverlay = this.add.text(
+        deadSprite.x, 
+        deadSprite.y, 
+        emoji, 
+        { fontSize: "64px" }
+      ).setOrigin(0.5).setDepth(3000);
+      
+      // Create committee name below emoji
+      const committeeName = this.add.text(
+        deadSprite.x,
+        deadSprite.y + 50,
+        data.committee,
+        { fontSize: "16px", color: "#ffffff", fontStyle: "bold", stroke: "#000000", strokeThickness: 3 }
+      ).setOrigin(0.5).setDepth(3000);
+      
+      // Pulse animation for emoji
+      this.tweens.add({
+        targets: emojiOverlay,
+        scale: 1.2,
+        duration: 500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut"
+      });
+      
+      // Keep emoji visible for 7 seconds, then fade out
+      this.tweens.add({
+        targets: [emojiOverlay, committeeName],
+        alpha: 0,
+        duration: 2000,
+        delay: 7000, // Show for 7 seconds
+        onComplete: () => {
+          emojiOverlay.destroy();
+          committeeName.destroy();
+        }
+      });
+    }
     
-    const committeeText = this.add.text(
-      400, 350, data.committee,
-      { fontSize: "32px", color: "#ffffff", fontStyle: "bold" }
-    ).setOrigin(0.5).setDepth(2001);
-    
-    const killerText = this.add.text(
-      400, 400, `Defeated by ${data.killerName}`,
-      { fontSize: "18px", color: "#ff9999" }
-    ).setOrigin(0.5).setDepth(2001);
-    
-    // Fade out animation
-    this.tweens.add({
-      targets: [overlay, emojiText, committeeText, killerText],
-      alpha: 0,
-      duration: 3000,
-      delay: 1500,
-      onComplete: () => {
-        overlay.destroy();
-        emojiText.destroy();
-        committeeText.destroy();
-        killerText.destroy();
-      }
-    });
+    // If it's YOUR death, show full-screen overlay
+    if (data.id === this.mySessionId) {
+      const overlay = this.add.rectangle(
+        400, 300, 800, 600, 0x000000, 0.7
+      ).setDepth(2000);
+      
+      const emojiText = this.add.text(
+        400, 250, emoji, 
+        { fontSize: "80px" }
+      ).setOrigin(0.5).setDepth(2001);
+      
+      const youDiedText = this.add.text(
+        400, 350, "YOU DIED!",
+        { fontSize: "32px", color: "#ff0000", fontStyle: "bold" }
+      ).setOrigin(0.5).setDepth(2001);
+      
+      const committeeText = this.add.text(
+        400, 400, `You were: ${data.committee}`,
+        { fontSize: "20px", color: "#ffffff" }
+      ).setOrigin(0.5).setDepth(2001);
+      
+      const killerText = this.add.text(
+        400, 440, `Defeated by ${data.killerName}`,
+        { fontSize: "18px", color: "#ff9999" }
+      ).setOrigin(0.5).setDepth(2001);
+      
+      // Keep your death screen for 5 seconds before fading
+      this.tweens.add({
+        targets: [overlay, emojiText, youDiedText, committeeText, killerText],
+        alpha: 0,
+        duration: 2000,
+        delay: 5000,
+        onComplete: () => {
+          overlay.destroy();
+          emojiText.destroy();
+          youDiedText.destroy();
+          committeeText.destroy();
+          killerText.destroy();
+        }
+      });
+    }
   }
 
   /**
