@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: committee-arena
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+
