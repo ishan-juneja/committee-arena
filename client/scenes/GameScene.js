@@ -350,14 +350,15 @@ export default class GameScene extends Phaser.Scene {
       const sprite = this.players[sessionId];
       if (!sprite) return;
       
-      // Update position if changed
+      // Always update position (server is authoritative)
       sprite.updatePosition(player.x, player.y);
       
-      // Update HP if changed
+      // Update HP
       sprite.updateHP(player.hp);
       
-      // Show attack animation if attacking
+      // Trigger attack animation
       if (player.attacking) {
+        console.log(`💥 ${player.name} attacking!`);
         sprite.showAttacking();
       }
     };
@@ -422,22 +423,10 @@ export default class GameScene extends Phaser.Scene {
       vec = this.joystick.getVector();
     } else if (this.keys) {
       // Desktop: use WASD keys
-      if (this.keys.W.isDown) {
-        vec.y = -1;
-        console.log("W pressed - moving up");
-      }
-      if (this.keys.S.isDown) {
-        vec.y = 1;
-        console.log("S pressed - moving down");
-      }
-      if (this.keys.A.isDown) {
-        vec.x = -1;
-        console.log("A pressed - moving left");
-      }
-      if (this.keys.D.isDown) {
-        vec.x = 1;
-        console.log("D pressed - moving right");
-      }
+      if (this.keys.W.isDown) vec.y = -1;
+      if (this.keys.S.isDown) vec.y = 1;
+      if (this.keys.A.isDown) vec.x = -1;
+      if (this.keys.D.isDown) vec.x = 1;
       
       // Normalize diagonal movement
       if (vec.x !== 0 && vec.y !== 0) {
@@ -445,23 +434,27 @@ export default class GameScene extends Phaser.Scene {
         vec.x /= magnitude;
         vec.y /= magnitude;
       }
+      
+      // Manual attack with SPACE bar (500ms cooldown)
+      if (this.keys.SPACE.isDown && time - this.lastSpacePress > 500) {
+        console.log("🎯 SPACE - Attack!");
+        this.network.sendAttack();
+        this.lastSpacePress = time;
+      }
     }
     
-    // Update movement direction if player is moving
+    // Track movement direction
     if (vec.x !== 0 || vec.y !== 0) {
       this.lastMovementDirection = { x: vec.x, y: vec.y };
-      
-      // Auto-attack while moving (less frequently - every 800ms)
-      if (time - this.lastAutoAttack > 800) {
-        this.network.sendAttack();
-        this.lastAutoAttack = time;
-      }
     }
     
     // Throttle network updates to prevent excessive traffic
     // Only send position updates every 50ms instead of every frame (60fps)
     // This allows 8-12 players to play smoothly without network congestion
     if (time - this.lastNetworkUpdate > this.networkUpdateInterval) {
+      if (vec.x !== 0 || vec.y !== 0) {
+        console.log(`📤 Move: dx=${(vec.x * 3).toFixed(1)}, dy=${(vec.y * 3).toFixed(1)}`);
+      }
       this.network.sendMove(vec);
       this.lastNetworkUpdate = time;
     }
