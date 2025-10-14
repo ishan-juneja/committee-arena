@@ -128,9 +128,6 @@ export default class GameScene extends Phaser.Scene {
     console.log(`🎯 You are: ${playerName} from ${playerCommittee}`);
     console.log(`🎨 Your color: ${playerColor.toString(16)}`);
     
-    // Setup keyboard controls (WASD + Space)
-    this.setupKeyboardControls();
-    
     try {
       // Store player sprites by ID
       this.players = {};
@@ -177,6 +174,11 @@ export default class GameScene extends Phaser.Scene {
       // Set up death event listener
       this.room.onMessage("death", (data) => this.showDeathScreen(data));
       
+      // Setup keyboard controls AFTER everything else is ready
+      this.setupKeyboardControls();
+      
+      console.log("🎮 Game fully initialized and ready!");
+      
     } catch (error) {
       console.error("Failed to connect:", error);
       this.add.text(400, 300, "❌ Failed to connect to server", {
@@ -190,6 +192,13 @@ export default class GameScene extends Phaser.Scene {
    * Sets up keyboard controls (WASD + Space)
    */
   setupKeyboardControls() {
+    console.log("⌨️ Setting up keyboard controls...");
+    
+    if (!this.input || !this.input.keyboard) {
+      console.error("❌ Keyboard input not available!");
+      return;
+    }
+    
     // Create keyboard input
     this.keys = {
       W: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
@@ -199,11 +208,19 @@ export default class GameScene extends Phaser.Scene {
       SPACE: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
     };
     
-    // Prevent space from scrolling page
-    this.input.keyboard.addCapture('W,A,S,D,SPACE');
+    // Prevent keys from scrolling page
+    this.input.keyboard.addCapture([
+      Phaser.Input.Keyboard.KeyCodes.W,
+      Phaser.Input.Keyboard.KeyCodes.A,
+      Phaser.Input.Keyboard.KeyCodes.S,
+      Phaser.Input.Keyboard.KeyCodes.D,
+      Phaser.Input.Keyboard.KeyCodes.SPACE
+    ]);
     
     // Track if space was just pressed (for attack cooldown)
     this.lastSpacePress = 0;
+    
+    console.log("✅ Keyboard controls set up!", this.keys);
   }
 
   /**
@@ -382,6 +399,12 @@ export default class GameScene extends Phaser.Scene {
    */
   update(time) {
     if (!this.network || !this.room) return;
+    
+    // Debug: Check if keys exist
+    if (!this.keys) {
+      console.warn("⚠️ Keys not initialized yet!");
+      return;
+    }
     
     // Smooth interpolation for all players (prevents choppy movement)
     for (const id in this.players) {
