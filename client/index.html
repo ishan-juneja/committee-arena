@@ -81,6 +81,22 @@
     .login-box button:active {
       transform: translateY(0);
     }
+    .color-option {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    .color-option:hover {
+      transform: scale(1.1);
+    }
+    .color-option.selected {
+      border: 3px solid #333;
+      transform: scale(1.2);
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
     #game-container {
       width: 100vw;
       height: 100vh;
@@ -110,6 +126,20 @@
       <h1>⚔️ Committee Arena</h1>
       <p>Enter the multiplayer battlefield!</p>
       <input type="text" id="player-name" placeholder="Enter your name" maxlength="20" autocomplete="off">
+      <button id="random-name-btn" style="margin-bottom: 20px; background: #888; padding: 10px; width: 100%; border-radius: 5px; border: none; color: white; cursor: pointer;">🎲 Random Name</button>
+      
+      <p style="margin: 20px 0 10px 0; color: #666; font-size: 14px;">Choose your color:</p>
+      <div id="color-picker" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap;">
+        <div class="color-option" data-color="0xFF6B6B" style="background: #FF6B6B"></div>
+        <div class="color-option" data-color="0x4ECDC4" style="background: #4ECDC4"></div>
+        <div class="color-option" data-color="0xFFD93D" style="background: #FFD93D"></div>
+        <div class="color-option" data-color="0x95E1D3" style="background: #95E1D3"></div>
+        <div class="color-option" data-color="0xF38181" style="background: #F38181"></div>
+        <div class="color-option" data-color="0xAA96DA" style="background: #AA96DA"></div>
+        <div class="color-option" data-color="0xFCACA6" style="background: #FCACA6"></div>
+        <div class="color-option" data-color="0x6BCF7F" style="background: #6BCF7F"></div>
+      </div>
+      
       <button id="join-button">🎮 Join Game</button>
     </div>
   </div>

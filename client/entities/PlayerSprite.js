@@ -26,21 +26,22 @@ export default class PlayerSprite extends Phaser.GameObjects.Container {
     this.targetY = 0;
     this.lerpSpeed = 0.3; // Interpolation speed (0-1, higher = faster)
 
-    // Create the player body (circle)
-    this.body = scene.add.circle(0, 0, 20, color);
+    // Create the player body (circle) - 12px radius = 25% of 50px grid box
+    this.body = scene.add.circle(0, 0, 12, color);
+    this.body.setStrokeStyle(2, 0xffffff, 0.8); // White outline for visibility
     
     // Create the name label above the player
-    this.label = scene.add.text(0, -35, name, { 
-      fontSize: "14px", 
+    this.label = scene.add.text(0, -28, name, { 
+      fontSize: "11px", 
       color: "#ffffff",
       fontStyle: "bold",
       stroke: "#000000",
-      strokeThickness: 3,
+      strokeThickness: 2,
     }).setOrigin(0.5);
     
-    // Add HP hearts below the name
-    this.hpText = scene.add.text(0, -50, "❤️❤️❤️", { 
-      fontSize: "12px",
+    // Add HP hearts above the name
+    this.hpText = scene.add.text(0, -40, "❤️❤️❤️", { 
+      fontSize: "10px",
     }).setOrigin(0.5);
 
     // Add all elements to the container

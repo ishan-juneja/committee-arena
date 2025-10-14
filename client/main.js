@@ -9,15 +9,48 @@ import GameScene from "./scenes/GameScene.js";
 // Wait for login before starting game
 let gameInstance = null;
 let playerName = null;
+let playerColor = 0xFF6B6B; // Default red
 
 // Handle login
 const loginScreen = document.getElementById('login-screen');
 const playerNameInput = document.getElementById('player-name');
 const joinButton = document.getElementById('join-button');
+const randomNameBtn = document.getElementById('random-name-btn');
 const controlsHint = document.getElementById('controls-hint');
+const colorOptions = document.querySelectorAll('.color-option');
 
-// Auto-focus name input
+// Random name generator
+const randomNames = [
+  "Ethan", "Hailey", "Sarah", "Manuela", "Elizabeth", "Yangyang",
+  "Katie", "Mei", "Arielle", "Alex", "Jordan", "Taylor", "Morgan",
+  "Casey", "Riley", "Avery", "Quinn", "Blake", "Charlie", "Drew"
+];
+
+function generateRandomName() {
+  return randomNames[Math.floor(Math.random() * randomNames.length)];
+}
+
+// Auto-generate a random name on load
+playerNameInput.value = generateRandomName();
 playerNameInput.focus();
+playerNameInput.select();
+
+// Random name button
+randomNameBtn.addEventListener('click', () => {
+  playerNameInput.value = generateRandomName();
+  playerNameInput.focus();
+  playerNameInput.select();
+});
+
+// Color selection
+colorOptions[0].classList.add('selected'); // Select first color by default
+colorOptions.forEach(option => {
+  option.addEventListener('click', () => {
+    colorOptions.forEach(opt => opt.classList.remove('selected'));
+    option.classList.add('selected');
+    playerColor = parseInt(option.dataset.color, 16);
+  });
+});
 
 // Handle Enter key in input
 playerNameInput.addEventListener('keypress', (e) => {
@@ -64,10 +97,11 @@ function startGame() {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    // Pass player name to game
+    // Pass player name and color to game
     callbacks: {
       preBoot: (game) => {
         game.registry.set('playerName', playerName);
+        game.registry.set('playerColor', playerColor);
       }
     }
   };

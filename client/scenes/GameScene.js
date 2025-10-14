@@ -112,13 +112,18 @@ export default class GameScene extends Phaser.Scene {
     // Initialize network
     this.network = new Network();
     
-    // Get player name from game registry (set by main.js)
+    // Get player name and color from game registry (set by main.js)
     const playerName = this.game.registry.get('playerName') || 'Guest' + Math.floor(Math.random() * 1000);
+    const playerColor = this.game.registry.get('playerColor') || 0xFF6B6B;
+    
+    // Store player color for later use
+    this.myPlayerColor = playerColor;
     
     // Determine committee based on name
     const playerCommittee = getCommitteeFromName(playerName);
     
     console.log(`🎯 You are: ${playerName} from ${playerCommittee}`);
+    console.log(`🎨 Your color: ${playerColor.toString(16)}`);
     
     // Setup keyboard controls (WASD + Space)
     this.setupKeyboardControls();
@@ -181,18 +186,17 @@ export default class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Creates an improved background with grid and visual effects
+   * Creates a high-fidelity, balanced arena background
    */
   createBackground() {
-    // Add subtle gradient rectangles for depth
-    const bg1 = this.add.rectangle(200, 150, 400, 300, 0x1a2332, 0.3);
-    const bg2 = this.add.rectangle(600, 450, 400, 300, 0x2a3342, 0.3);
+    // Add dark gradient base
+    const bg = this.add.rectangle(400, 300, 800, 600, 0x0a0e1a, 1);
     
-    // Create grid with better styling
+    // Create main grid
     const graphics = this.add.graphics();
-    graphics.lineStyle(1, 0x2a3342, 0.8);
+    graphics.lineStyle(1, 0x1e2d47, 1);
     
-    // Vertical lines with gradient effect
+    // Vertical lines
     for (let x = 0; x <= 800; x += 50) {
       graphics.lineBetween(x, 0, x, 600);
     }
@@ -202,19 +206,50 @@ export default class GameScene extends Phaser.Scene {
       graphics.lineBetween(0, y, 800, y);
     }
     
-    // Add corner decorations
-    graphics.lineStyle(2, 0x667eea, 0.6);
-    graphics.strokeRect(5, 5, 790, 590);
-    graphics.strokeRect(10, 10, 780, 580);
+    // Add thicker accent lines every 100px
+    graphics.lineStyle(2, 0x2a4165, 0.6);
+    for (let x = 0; x <= 800; x += 100) {
+      graphics.lineBetween(x, 0, x, 600);
+    }
+    for (let y = 0; y <= 600; y += 100) {
+      graphics.lineBetween(0, y, 800, y);
+    }
     
-    // Add center arena marker
-    graphics.lineStyle(1, 0x667eea, 0.4);
+    // Outer border - double frame
+    graphics.lineStyle(3, 0x4a6fa5, 0.8);
+    graphics.strokeRect(0, 0, 800, 600);
+    graphics.lineStyle(2, 0x667eea, 0.6);
+    graphics.strokeRect(8, 8, 784, 584);
+    
+    // Center arena circles - perfectly centered
+    graphics.lineStyle(2, 0x667eea, 0.5);
     graphics.strokeCircle(400, 300, 100);
+    graphics.lineStyle(2, 0x667eea, 0.3);
     graphics.strokeCircle(400, 300, 150);
     
-    // Add subtle glow effect to center
-    graphics.fillStyle(0x667eea, 0.05);
-    graphics.fillCircle(400, 300, 150);
+    // Center dot
+    graphics.fillStyle(0x667eea, 0.6);
+    graphics.fillCircle(400, 300, 4);
+    
+    // Corner accent marks
+    const cornerSize = 30;
+    graphics.lineStyle(3, 0x667eea, 0.7);
+    // Top-left
+    graphics.lineBetween(15, 15, 15 + cornerSize, 15);
+    graphics.lineBetween(15, 15, 15, 15 + cornerSize);
+    // Top-right
+    graphics.lineBetween(785, 15, 785 - cornerSize, 15);
+    graphics.lineBetween(785, 15, 785, 15 + cornerSize);
+    // Bottom-left
+    graphics.lineBetween(15, 585, 15 + cornerSize, 585);
+    graphics.lineBetween(15, 585, 15, 585 - cornerSize);
+    // Bottom-right
+    graphics.lineBetween(785, 585, 785 - cornerSize, 585);
+    graphics.lineBetween(785, 585, 785, 585 - cornerSize);
+    
+    // Subtle glow in center
+    graphics.fillStyle(0x667eea, 0.03);
+    graphics.fillCircle(400, 300, 180);
   }
 
   /**
@@ -224,11 +259,16 @@ export default class GameScene extends Phaser.Scene {
   setupStateListeners() {
     // When a new player joins
     this.room.state.players.onAdd = (player, sessionId) => {
-      console.log(`➕ Player joined: ${player.name}`);
+      console.log(`➕ Player joined: ${player.name} at (${player.x}, ${player.y})`);
       
-      // Determine color based on committee
-      const committee = COMMITTEES[player.committee] || { color: 0xffffff };
-      const color = committee.color;
+      // Use player's selected color if it's the local player, otherwise use committee color
+      let color;
+      if (sessionId === this.mySessionId) {
+        color = this.myPlayerColor;
+      } else {
+        const committee = COMMITTEES[player.committee] || { color: 0xffffff };
+        color = committee.color;
+      }
       
       // Create player sprite
       const playerSprite = new PlayerSprite(
@@ -238,15 +278,22 @@ export default class GameScene extends Phaser.Scene {
         color
       );
       
+      // Set initial position (CRITICAL - this was missing!)
+      playerSprite.x = player.x;
+      playerSprite.y = player.y;
+      playerSprite.targetX = player.x;
+      playerSprite.targetY = player.y;
       playerSprite.updatePosition(player.x, player.y);
       playerSprite.updateHP(player.hp);
       
-      // Highlight own player
+      // Highlight own player with yellow glow
       if (sessionId === this.mySessionId) {
-        playerSprite.body.setStrokeStyle(3, 0xffff00);
+        playerSprite.body.setStrokeStyle(3, 0xffff00, 1);
       }
       
       this.players[sessionId] = playerSprite;
+      
+      console.log(`✅ Player sprite created at (${playerSprite.x}, ${playerSprite.y})`);
       
       // Listen for changes to this specific player
       player.onChange = () => {
